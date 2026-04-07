@@ -1,0 +1,256 @@
+{% extends 'admin/base.html' %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/dropzone@5/dist/min/dropzone.min.css" type="text/css" />
+<style>
+    .card { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 1.5rem; }
+    .card-header { background: #fff !important; font-weight: bold; border-bottom: 1px solid #eee; color: #1a237e; text-transform: uppercase; font-size: 0.8rem; }
+    .dropzone { border: 2px dashed #0d6efd !important; border-radius: 12px !important; background: #f8f9ff !important; min-height: 180px !important; cursor: pointer; }
+    .bg-ref { background-color: #e9ecef; font-weight: bold; color: #0d6efd; }
+    .foto-card { position: relative; cursor: pointer; }
+    .foto-card img {
+        height: 80px; width: 100%; object-fit: cover;
+        border-radius: 6px; border: 3px solid transparent;
+        transition: border-color .15s;
+    }
+    .foto-card:hover img { border-color: #0d6efd; }
+    .foto-card.principal img { border-color: #ffc107; }
+    .badge-principal {
+        position: absolute; bottom: 5px; left: 5px;
+        background: #ffc107; color: #000;
+        font-size: 10px; font-weight: 700;
+        padding: 2px 5px; border-radius: 4px;
+        pointer-events: none;
+    }
+    .btn-excluir-foto {
+        position: absolute; top: 3px; right: 9px;
+        width: 22px; height: 22px; padding: 0;
+        font-size: 13px; line-height: 1;
+        border-radius: 50%; border: none; cursor: pointer;
+        background: rgba(220,53,69,.85); color: #fff;
+        display: flex; align-items: center; justify-content: center;
+        transition: background .15s;
+    }
+    .btn-excluir-foto:hover { background: #dc3545; }
+</style>
+{% endblock %}
+
+{% block content %}
+<form method="POST">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h3 mb-0">{{ 'Editar' if imovel else 'Novo' }} Imóvel</h2>
+        <button type="submit" class="btn btn-primary btn-lg px-5 shadow">Salvar Alterações</button>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header p-3">1. Classificação e Título</div>
+                <div class="card-body p-4">
+                    <div class="row">
+                        <div class="col-md-5 mb-3">
+                            <label class="form-label fw-bold">Tipo *</label>
+                            <select name="tipo_id" id="tipo_id" class="form-select" required onchange="updateRef()">
+                                <option value="">Selecione...</option>
+                                {% for t in tipos %}
+                                <option value="{{ t.id }}" data-prefixo="{{ t.prefixo }}" {{ 'selected' if imovel and imovel.tipo_id == t.id }}>{{ t.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Referência</label>
+                            <input type="text" id="previewRef" class="form-control bg-ref" readonly value="{{ imovel.codigo_ref if imovel else '---' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Finalidade</label>
+                            <select name="finalidade" id="finalidade" class="form-select" onchange="updateLabelPreco()">
+                                <option value="Venda" {{ 'selected' if imovel and imovel.finalidade == 'Venda' }}>Venda</option>
+                                <option value="Locação" {{ 'selected' if imovel and imovel.finalidade == 'Locação' }}>Locação</option>
+                            </select>
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label class="form-label fw-bold">Título do Anúncio *</label>
+                            <input type="text" name="titulo" class="form-control" value="{{ imovel.titulo if imovel }}" required>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header p-3">2. Localização</div>
+                <div class="card-body p-4">
+                    <div class="row">
+                        <div class="col-md-4 mb-3"><label class="form-label">CEP</label><input type="text" name="cep" id="cep" class="form-control" value="{{ imovel.cep if imovel }}"></div>
+                        <div class="col-md-8 mb-3"><label class="form-label">Rua</label><input type="text" name="logradouro" id="logradouro" class="form-control" value="{{ imovel.logradouro if imovel }}"></div>
+                        <div class="col-md-3 mb-3"><label class="form-label">Número</label><input type="text" name="numero" class="form-control" value="{{ imovel.numero if imovel }}"></div>
+                        <div class="col-md-5 mb-3"><label class="form-label">Bairro</label><input type="text" name="bairro" id="bairro" class="form-control" value="{{ imovel.bairro if imovel }}"></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Cidade</label><input type="text" name="cidade" id="cidade" class="form-control" value="{{ imovel.cidade if imovel }}"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-primary">
+                <div class="card-header p-3">3. Fotos do Imóvel</div>
+                <div class="card-body p-4">
+                    {% if imovel and imovel.fotos %}
+                    <p class="text-muted small mb-2">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Clique em uma foto para defini-la como <strong>principal</strong>. Ela será exibida como capa do anúncio.
+                    </p>
+                    <div class="row g-2 mb-3" id="galeria-fotos">
+                        {% for foto in imovel.fotos %}
+                        <div class="col-6 col-md-2 foto-card {{ 'principal' if foto.principal }}" id="foto-{{ foto.id }}"
+                             onclick="setPrincipal({{ foto.id }})" title="Clique para definir como principal">
+                            <img src="{{ url_for('static', filename=foto.url) }}" class="img-thumbnail">
+                            {% if foto.principal %}
+                            <span class="badge-principal">★ Principal</span>
+                            {% endif %}
+                            <button type="button" class="btn-excluir-foto"
+                                    onclick="event.stopPropagation(); excluirFoto({{ foto.id }})"
+                                    title="Remover foto">×</button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    <div class="dropzone" id="meuDropzone"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header p-3">4. Descrição Detalhada</div>
+                <div class="card-body"><textarea name="descricao" class="form-control" rows="5">{{ imovel.descricao if imovel }}</textarea></div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header p-3">Valores (R$)</div>
+                <div class="card-body">
+                    <label class="form-label fw-bold" id="label_preco">Preço de Venda</label>
+                    <input type="text" id="preco_mask" class="form-control money mb-3 fw-bold text-primary" value="{{ imovel.preco | moeda if imovel }}">
+                    <input type="hidden" name="preco_real" id="preco_real" value="{{ imovel.preco if imovel }}">
+                    <label class="form-label">Condomínio</label>
+                    <input type="text" id="condo_mask" class="form-control money mb-3" value="{{ imovel.valor_condominio | moeda if imovel }}">
+                    <input type="hidden" name="condo_real" id="condo_real" value="{{ imovel.valor_condominio if imovel }}">
+                    <label class="form-label">IPTU</label>
+                    <input type="text" id="iptu_mask" class="form-control money" value="{{ imovel.valor_iptu | moeda if imovel }}">
+                    <input type="hidden" name="iptu_real" id="iptu_real" value="{{ imovel.valor_iptu if imovel }}">
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header p-3">Características</div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-6 mb-2"><label class="small fw-bold">Quartos</label><input type="number" name="quartos" class="form-control" value="{{ imovel.quartos if imovel }}"></div>
+                        <div class="col-6 mb-2"><label class="small fw-bold">Suítes</label><input type="number" name="suites" class="form-control" value="{{ imovel.suites if imovel }}"></div>
+                        <div class="col-6 mb-2"><label class="small fw-bold">Banheiros</label><input type="number" name="banheiros" class="form-control" value="{{ imovel.banheiros if imovel }}"></div>
+                        <div class="col-6 mb-2"><label class="small fw-bold">Vagas</label><input type="number" name="vagas" class="form-control" value="{{ imovel.vagas if imovel }}"></div>
+                        <div class="col-6"><label class="small fw-bold">Área Útil</label><input type="number" name="area_util" class="form-control" value="{{ imovel.area_util if imovel }}"></div>
+                        <div class="col-6"><label class="small fw-bold">Área Total</label><input type="number" name="area_total" class="form-control" value="{{ imovel.area_total if imovel }}"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/dropzone@5/dist/min/dropzone.min.js"></script>
+<script>
+    Dropzone.autoDiscover = false;
+    document.addEventListener("DOMContentLoaded", function() {
+        new Dropzone("#meuDropzone", {
+            url: "{{ url_for('admin.upload_temp_fotos') }}",
+            paramName: "fotos",
+            maxFilesize: 5,
+            acceptedFiles: "image/*",
+            clickable: true,
+            addRemoveLinks: true,
+            dictRemoveFile: "Remover",
+            dictCancelUpload: "Cancelar"
+        });
+    });
+
+    function setPrincipal(fotoId) {
+        fetch("{{ url_for('admin.definir_foto_principal', foto_id=0) }}".replace('/0', '/' + fotoId), {
+            method: 'POST'
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                // Remove destaque de todos
+                document.querySelectorAll('.foto-card').forEach(c => {
+                    c.classList.remove('principal');
+                    const badge = c.querySelector('.badge-principal');
+                    if (badge) badge.remove();
+                });
+                // Destaca o selecionado
+                const card = document.getElementById('foto-' + fotoId);
+                card.classList.add('principal');
+                const badge = document.createElement('span');
+                badge.className = 'badge-principal';
+                badge.textContent = '★ Principal';
+                card.appendChild(badge);
+            }
+        })
+        .catch(() => alert('Erro ao definir foto principal.'));
+    }
+
+    function excluirFoto(fotoId) {
+        fetch("{{ url_for('admin.excluir_foto', foto_id=0) }}".replace('/0', '/' + fotoId), {
+            method: 'POST'
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                const el = document.getElementById('foto-' + fotoId);
+                if (el) el.remove();
+            }
+        })
+        .catch(() => alert('Erro ao remover a foto. Tente novamente.'));
+    }
+
+    document.querySelectorAll('.money').forEach(input => {
+        input.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            value = (value / 100).toFixed(2) + '';
+            value = value.replace(".", ",");
+            value = value.replace(/(\d)(\d{3})(\d{3}),/g, "$1.$2.$3,");
+            value = value.replace(/(\d)(\d{3}),/g, "$1.$2,");
+            e.target.value = value ? 'R$ ' + value : '';
+            const hiddenId = e.target.id.replace('_mask', '_real');
+            document.getElementById(hiddenId).value = value.replace(/\./g, '').replace(',', '.');
+        });
+    });
+
+    document.getElementById('cep').addEventListener('blur', function() {
+        let cep = this.value.replace(/\D/g, '');
+        if (cep.length === 8) {
+            fetch(`https://viacep.com.br/ws/${cep}/json/`)
+                .then(r => r.json()).then(data => {
+                    if (!data.erro) {
+                        document.getElementById('logradouro').value = data.logradouro;
+                        document.getElementById('bairro').value = data.bairro;
+                        document.getElementById('cidade').value = data.localidade;
+                    }
+                });
+        }
+    });
+
+    function updateRef() {
+        const select = document.getElementById('tipo_id');
+        const prefixo = select.options[select.selectedIndex].getAttribute('data-prefixo');
+        document.getElementById('previewRef').value = prefixo ? prefixo + "???" : "---";
+    }
+
+    function updateLabelPreco() {
+        const finalidade = document.getElementById('finalidade').value;
+        const label = document.getElementById('label_preco');
+        label.textContent = finalidade === 'Locação' ? 'Valor do Aluguel (R$/mês)' : 'Preço de Venda';
+    }
+
+    document.addEventListener("DOMContentLoaded", updateLabelPreco);
+</script>
+{% endblock %}

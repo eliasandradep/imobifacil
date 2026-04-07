@@ -1,0 +1,610 @@
+{% extends 'admin/base.html' %}
+
+{% block head %}
+<style>
+    /* ── Abas ── */
+    .nav-tabs .nav-link        { color: #666; border: none; border-bottom: 3px solid transparent; padding: .6rem 1.2rem; }
+    .nav-tabs .nav-link.active { color: #0d6efd; border-bottom-color: #0d6efd; font-weight: 600; background: transparent; }
+    .nav-tabs                  { border-bottom: 1px solid #dee2e6; margin-bottom: 1.5rem; }
+
+    /* ── Cards de tema ── */
+    .tema-card {
+        border: 3px solid #dee2e6;
+        border-radius: 14px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: all .2s;
+        position: relative;
+    }
+    .tema-card:hover              { border-color: #0d6efd; transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,.12); }
+    .tema-card.selecionado        { border-color: #0d6efd; box-shadow: 0 0 0 4px rgba(13,110,253,.15); }
+    .tema-card .check-badge {
+        display: none;
+        position: absolute; top: 8px; right: 8px;
+        background: #0d6efd; color: #fff;
+        width: 24px; height: 24px; border-radius: 50%;
+        font-size: 13px; align-items: center; justify-content: center;
+    }
+    .tema-card.selecionado .check-badge { display: flex; }
+
+    /* Mini-preview do tema */
+    .tema-preview { height: 110px; display: flex; flex-direction: column; }
+    .tema-preview .p-nav    { height: 22px; flex-shrink: 0; }
+    .tema-preview .p-hero   { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; }
+    .tema-preview .p-hero span { background: rgba(255,255,255,.25); border-radius: 4px; height: 10px; }
+    .tema-preview .p-footer { height: 18px; flex-shrink: 0; }
+    .tema-info { padding: .75rem 1rem; background: #fff; }
+    .tema-info strong { font-size: .85rem; display: block; }
+    .tema-info small   { font-size: .72rem; color: #888; }
+
+    /* ── Logo preview ── */
+    .logo-preview {
+        width: 180px; height: 90px;
+        object-fit: contain;
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        padding: 8px;
+        background: #f8f9fa;
+    }
+
+    /* ── Banner card ── */
+    .banner-card { border: 1px solid #dee2e6; border-radius: 12px; overflow: hidden; }
+    .banner-card img { height: 130px; width: 100%; object-fit: cover; }
+    .banner-card .banner-info { padding: .75rem; background: #fff; }
+
+    /* ── Drop area banners ── */
+    .drop-area {
+        border: 2px dashed #ced4da;
+        border-radius: 12px;
+        padding: 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all .2s;
+        background: #fafbfc;
+    }
+    .drop-area:hover, .drop-area.drag-over { border-color: #0d6efd; background: #f0f4ff; }
+    #preview-banner { max-height: 160px; border-radius: 8px; object-fit: cover; width: 100%; display: none; }
+
+    /* ── Cards de layout ── */
+    .layout-group-title { font-size: .75rem; font-weight: 700; text-transform: uppercase;
+                          letter-spacing: 1px; color: #888; margin-bottom: .75rem; }
+    .layout-card {
+        border: 3px solid #dee2e6; border-radius: 12px; overflow: hidden;
+        cursor: pointer; transition: all .2s; position: relative;
+        background: #fff;
+    }
+    .layout-card:hover { border-color: #0d6efd; transform: translateY(-2px);
+                         box-shadow: 0 6px 16px rgba(0,0,0,.1); }
+    .layout-card.selecionado { border-color: #0d6efd;
+                               box-shadow: 0 0 0 4px rgba(13,110,253,.15); }
+    .layout-card .check-badge { display: none; position: absolute; top: 6px; right: 6px;
+        background: #0d6efd; color: #fff; width: 20px; height: 20px;
+        border-radius: 50%; font-size: 11px; align-items: center; justify-content: center; }
+    .layout-card.selecionado .check-badge { display: flex; }
+    .layout-card .lc-preview { height: 80px; background: #f8f9fa;
+                                border-bottom: 1px solid #eee; }
+    .layout-card .lc-label { padding: .5rem .75rem; font-size: .78rem;
+                              font-weight: 600; color: #333; }
+    .layout-card .lc-desc  { padding: 0 .75rem .5rem; font-size: .7rem; color: #888; }
+
+    /* Mini mockup helpers */
+    .mm-navbar { height: 10px; background: #0d1b2a; }
+    .mm-hero-full { height: 30px; background: linear-gradient(135deg,#1a3a5c,#0d1b2a); }
+    .mm-hero-med  { height: 18px; background: linear-gradient(135deg,#1a3a5c,#0d1b2a); }
+    .mm-bar { height: 10px; background: #e9ecef; margin: 4px 6px; border-radius: 3px; }
+    .mm-bar.prim { background: #0d6efd22; }
+    .mm-grid { display: flex; gap: 3px; padding: 4px 6px; }
+    .mm-card { flex: 1; background: #dee2e6; border-radius: 2px; height: 18px; }
+    .mm-sidebar { display: flex; gap: 3px; padding: 4px 6px; }
+    .mm-side-col { width: 22px; background: #e9ecef; border-radius: 2px; }
+    .mm-side-content { flex: 1; display: flex; gap: 2px; }
+    .mm-side-card { flex: 1; background: #dee2e6; border-radius: 2px; }
+    .mm-logo-left  { display: flex; align-items: center; padding: 0 4px; }
+    .mm-logo-box   { width: 22px; height: 7px; background: #0d6efd; border-radius: 2px; }
+    .mm-logo-center { display: flex; justify-content: center; align-items: center; padding: 0 4px; }
+    .mm-search-in-hero { display: flex; justify-content: center; align-items: center; }
+    .mm-search-box { width: 60%; height: 8px; background: rgba(255,255,255,.4);
+                     border-radius: 2px; margin-top: -4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="h3 fw-bold mb-0">Meu Site</h2>
+        <small class="text-muted">Personalize a aparência do seu site público</small>
+    </div>
+    <a href="{{ url_for('site.index') }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-box-arrow-up-right me-1"></i> Ver Site
+    </a>
+</div>
+
+<!-- ABAS -->
+<ul class="nav nav-tabs" id="siteTabs">
+    <li class="nav-item">
+        <a class="nav-link {{ 'active' if tab == 'tema' }}"
+           href="{{ url_for('admin.meusite', tab='tema') }}">
+            <i class="bi bi-palette me-1"></i> Tema
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {{ 'active' if tab == 'identidade' }}"
+           href="{{ url_for('admin.meusite', tab='identidade') }}">
+            <i class="bi bi-building me-1"></i> Identidade
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {{ 'active' if tab == 'banners' }}"
+           href="{{ url_for('admin.meusite', tab='banners') }}">
+            <i class="bi bi-images me-1"></i> Banners
+            {% if banners %}<span class="badge bg-primary ms-1" style="font-size:.65rem;">{{ banners|length }}</span>{% endif %}
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {{ 'active' if tab == 'layout' }}"
+           href="{{ url_for('admin.meusite', tab='layout') }}">
+            <i class="bi bi-layout-wtf me-1"></i> Layout
+        </a>
+    </li>
+</ul>
+
+<!-- ══════════ ABA: TEMA ══════════ -->
+{% if tab == 'tema' %}
+<form method="POST" action="{{ url_for('admin.salvar_tema') }}">
+    <input type="hidden" name="tema_id" id="tema_id_input" value="{{ imobiliaria.tema_ativo or 'clean' }}">
+
+    <div class="row g-3 mb-4">
+        {% for t in temas %}
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="tema-card {{ 'selecionado' if (imobiliaria.tema_ativo or 'clean') == t.id }}"
+                 onclick="selecionarTema('{{ t.id }}', this)">
+                <div class="check-badge"><i class="bi bi-check"></i></div>
+                <div class="tema-preview">
+                    <div class="p-nav" style="background: {{ t.cores[1] }};"></div>
+                    <div class="p-hero" style="background: linear-gradient(135deg, {{ t.cores[1] }}, {{ t.cores[0] }});">
+                        <span style="width: 40%;"></span>
+                        <span style="width: 25%;"></span>
+                    </div>
+                    <div class="p-footer" style="background: {{ t.cores[2] }};"></div>
+                </div>
+                <div class="tema-info">
+                    <strong>{{ t.nome }}</strong>
+                    <small>{{ t.descricao }}</small>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <button type="submit" class="btn btn-primary px-5 shadow-sm">
+        <i class="bi bi-check-lg me-1"></i> Salvar Tema
+    </button>
+</form>
+{% endif %}
+
+<!-- ══════════ ABA: IDENTIDADE ══════════ -->
+{% if tab == 'identidade' %}
+<div class="row">
+    <div class="col-lg-7">
+        <form method="POST" action="{{ url_for('admin.salvar_identidade') }}" enctype="multipart/form-data">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3">Logotipo</h6>
+
+                    {% if imobiliaria.logo_url %}
+                    <div class="mb-3 d-flex align-items-center gap-3">
+                        <img src="{{ url_for('static', filename=imobiliaria.logo_url) }}"
+                             class="logo-preview" alt="Logo atual">
+                        <div>
+                            <p class="mb-1 small text-muted">Logo atual</p>
+                            <small class="text-muted">Envie um novo arquivo para substituí-lo.</small>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <label class="form-label small fw-bold">
+                        {{ 'Substituir logo' if imobiliaria.logo_url else 'Enviar logo' }}
+                    </label>
+                    <input type="file" name="logo" class="form-control mb-1"
+                           accept=".jpg,.jpeg,.png,.webp,.svg"
+                           onchange="previewLogo(this)">
+                    <small class="text-muted">Formatos: JPG, PNG, WEBP, SVG. Recomendado: fundo transparente (PNG).</small>
+
+                    <div class="mt-3" id="logo-nova-preview" style="display:none;">
+                        <p class="small text-muted mb-1">Pré-visualização:</p>
+                        <img id="logo-preview-img" class="logo-preview" alt="Prévia">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3">Contato via WhatsApp</h6>
+                    <p class="text-muted small mb-3">
+                        Número exibido no botão de contato das páginas de imóveis.
+                    </p>
+                    <div class="input-group">
+                        <span class="input-group-text bg-success text-white">
+                            <i class="bi bi-whatsapp"></i>
+                        </span>
+                        <input type="text" name="whatsapp" class="form-control"
+                               placeholder="Ex: 11999999999"
+                               value="{{ imobiliaria.whatsapp or '' }}">
+                    </div>
+                    <small class="text-muted">Somente números com DDD, sem espaços ou traços.</small>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary px-5 shadow-sm">
+                <i class="bi bi-check-lg me-1"></i> Salvar Identidade
+            </button>
+        </form>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm" style="background: #f0f4ff;">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-2"><i class="bi bi-lightbulb text-warning me-1"></i> Dicas</h6>
+                <ul class="small text-muted mb-0 ps-3">
+                    <li class="mb-2">Use um logo com <strong>fundo transparente</strong> (.PNG) para melhor integração com os temas.</li>
+                    <li class="mb-2">Dimensão recomendada: <strong>300 × 80 px</strong> ou proporção similar.</li>
+                    <li>O WhatsApp é exibido como botão nas páginas de detalhes dos imóveis.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ══════════ ABA: BANNERS ══════════ -->
+{% if tab == 'banners' %}
+<div class="row">
+    <div class="col-lg-8">
+        <h6 class="fw-bold mb-3">
+            Banners ativos
+            <span class="text-muted fw-normal">({{ banners|length }})</span>
+        </h6>
+
+        {% if banners %}
+        <div class="row g-3 mb-4">
+            {% for banner in banners %}
+            <div class="col-sm-6 col-md-4" id="banner-{{ banner.id }}">
+                <div class="banner-card shadow-sm">
+                    <img src="{{ url_for('static', filename=banner.url_imagem) }}" alt="Banner">
+                    <div class="banner-info">
+                        <p class="fw-bold mb-0 small text-truncate">
+                            {{ banner.titulo or '(sem título)' }}
+                        </p>
+                        {% if banner.subtitulo %}
+                        <small class="text-muted text-truncate d-block">{{ banner.subtitulo }}</small>
+                        {% endif %}
+                        <form method="POST"
+                              action="{{ url_for('admin.excluir_banner', banner_id=banner.id) }}"
+                              class="mt-2"
+                              onsubmit="return confirm('Remover este banner?')">
+                            <button type="submit" class="btn btn-sm btn-outline-danger w-100">
+                                <i class="bi bi-trash me-1"></i> Remover
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted mb-4">
+            <i class="bi bi-images display-4 opacity-25"></i>
+            <p class="mt-2 small">Nenhum banner cadastrado ainda.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3">
+                    <i class="bi bi-plus-circle text-primary me-1"></i> Novo Banner
+                </h6>
+                <form method="POST" action="{{ url_for('admin.novo_banner') }}" enctype="multipart/form-data">
+                    <div class="drop-area mb-3" id="drop-area"
+                         onclick="document.getElementById('banner-input').click()">
+                        <i class="bi bi-cloud-upload fs-2 text-muted d-block mb-2"></i>
+                        <span class="small text-muted">Clique para selecionar ou arraste a imagem</span>
+                        <input type="file" id="banner-input" name="imagem" class="d-none"
+                               accept=".jpg,.jpeg,.png,.webp" required
+                               onchange="previewBanner(this)">
+                    </div>
+                    <img id="preview-banner" src="" alt="Preview">
+
+                    <div class="mb-3 mt-3">
+                        <label class="form-label small fw-bold">Título <span class="text-muted fw-normal">(opcional)</span></label>
+                        <input type="text" name="titulo" class="form-control form-control-sm"
+                               placeholder="Ex: Apartamentos com vista para o mar">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Subtítulo <span class="text-muted fw-normal">(opcional)</span></label>
+                        <input type="text" name="subtitulo" class="form-control form-control-sm"
+                               placeholder="Ex: Os melhores imóveis da região">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-plus-lg me-1"></i> Adicionar Banner
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mt-3" style="background: #f0f4ff;">
+            <div class="card-body p-3">
+                <p class="small text-muted mb-0">
+                    <i class="bi bi-info-circle text-primary me-1"></i>
+                    Os banners são exibidos como um <strong>carrossel</strong> na página inicial do seu site.
+                    Dimensão recomendada: <strong>1400 × 500 px</strong>.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ══════════ ABA: LAYOUT ══════════ -->
+{% if tab == 'layout' %}
+{% set lb = imobiliaria.layout_banner or 'fullscreen' %}
+{% set lbu = imobiliaria.layout_busca  or 'abaixo' %}
+{% set lg = imobiliaria.layout_grid   or '3' %}
+{% set ll = imobiliaria.layout_logo   or 'esquerda' %}
+
+<form method="POST" action="{{ url_for('admin.salvar_layout') }}">
+
+    {# ── BANNER ── #}
+    <div class="layout-group-title mb-1">Banner / Hero</div>
+    <p class="text-muted small mb-3">Define a altura e o estilo da seção de destaque no topo do site.</p>
+    <div class="row g-3 mb-4">
+
+        <div class="col-6 col-md-4">
+            <label class="layout-card w-100 {{ 'selecionado' if lb == 'fullscreen' }}" onclick="sel(this,'layout_banner','fullscreen')">
+                <div class="check-badge"><i class="bi bi-check"></i></div>
+                <div class="lc-preview d-flex flex-column">
+                    <div class="mm-navbar"></div>
+                    <div class="mm-hero-full" style="flex:1;display:flex;align-items:center;justify-content:center;">
+                        <div style="width:45%;height:8px;background:rgba(255,255,255,.3);border-radius:2px;"></div>
+                    </div>
+                </div>
+                <div class="lc-label">Tela cheia</div>
+                <div class="lc-desc">Banner de impacto, ocupa toda a largura em altura generosa.</div>
+            </label>
+        </div>
+
+        <div class="col-6 col-md-4">
+            <label class="layout-card w-100 {{ 'selecionado' if lb == 'medio' }}" onclick="sel(this,'layout_banner','medio')">
+                <div class="check-badge"><i class="bi bi-check"></i></div>
+                <div class="lc-preview d-flex flex-column">
+                    <div class="mm-navbar"></div>
+                    <div class="mm-hero-med" style="margin:6px;border-radius:4px;"></div>
+                    <div class="mm-bar" style="margin-top:2px;"></div>
+                </div>
+                <div class="lc-label">Médio</div>
+                <div class="lc-desc">Banner compacto, ocupa menos espaço vertical.</div>
+            </label>
+        </div>
+
+        <div class="col-6 col-md-4">
+            <label class="layout-card w-100 {{ 'selecionado' if lb == 'nenhum' }}" onclick="sel(this,'layout_banner','nenhum')">
+                <div class="check-badge"><i class="bi bi-check"></i></div>
+                <div class="lc-preview d-flex flex-column justify-content-center">
+                    <div class="mm-navbar"></div>
+                    <div class="mm-bar mt-2"></div>
+                    <div class="mm-bar"></div>
+                </div>
+                <div class="lc-label">Sem banner</div>
+                <div class="lc-desc">Vai direto para os imóveis, sem seção hero.</div>
+            </label>
+        </div>
+
+    </div>
+
+    {# ── BUSCA ── #}
+    <div class="layout-group-title mb-1">Barra de busca</div>
+    <p class="text-muted small mb-3">Onde os filtros de pesquisa de imóveis serão exibidos.</p>
+    <div class="row g-3 mb-4">
+
+        <div class="col-6 col-md-3">
+            <label class="layout-card w-100 {{ 'selecionado' if lbu == 'banner' }}" onclick="sel(this,'layout_busca','banner')">
+                <div class="check-badge"><i class="bi bi-check"></i></div>
+                <div class="lc-preview d-flex flex-column">
+                    <div class="mm-navbar"></div>
+                    <div class="mm-hero-full" style="flex:1;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px;">
+                        <div style="width:70%;height:9px;background:rgba(255,255,255,.5);border-radius:3px;"></div>
+                    </div>
+                </div>
+                <div class="lc-label">Dentro do banner</div>
+                <div class="lc-desc">Busca sobreposta ao hero, integrada ao visual.</div>
+            </label>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <label class="layout-card w-100 {{ 'selecionado' if lbu == 'abaixo' }}" onclick="sel(this,'layout_busca','abaixo')">
+                <div class="check-badge"><i class="bi bi-check"></i></div>
+                <div class="lc-preview d-flex flex-column">
+                    <div class="mm-navbar"></div>
+                    <div class="mm-hero-med"></div>
+                    <div class="mm-bar prim" style="height:9px;"></div>
+                    <div class="mm-grid mt-1">
+                        <div class="mm-card"></div><div class="mm-card"></div><div class="mm-card"></div>
+                    </div>
+                </div>
+                <div class="lc-label">Abaixo do banner</div>
+                <div class="lc-desc">Barra de filtros horizontal entre o hero e os imóveis.</div>
+            </label>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <label class="layout-card w-100 {{ 'selecionado' if lbu == 'lateral' }}" onclick="sel(this,'layout_busca','lateral')">
+                <div class="check-badge"><i class="bi bi-check"></i></div>
+                <div class="lc-preview d-flex flex-column">
+                    <div class="mm-navbar"></div>
+                    <div class="mm-hero-med"></div>
+                    <div class="mm-sidebar mt-1">
+                        <div class="mm-side-col"></div>
+                        <div class="mm-side-content">
+                            <div class="mm-side-card"></div><div class="mm-side-card"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="lc-label">Lateral (sidebar)</div>
+                <div class="lc-desc">Filtros em coluna lateral à esquerda dos imóveis.</div>
+            </label>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <label class="layout-card w-100 {{ 'selecionado' if lbu == 'nenhum' }}" onclick="sel(this,'layout_busca','nenhum')">
+                <div class="check-badge"><i class="bi bi-check"></i></div>
+                <div class="lc-preview d-flex flex-column">
+                    <div class="mm-navbar"></div>
+                    <div class="mm-hero-med"></div>
+                    <div class="mm-grid mt-1">
+                        <div class="mm-card"></div><div class="mm-card"></div><div class="mm-card"></div>
+                    </div>
+                </div>
+                <div class="lc-label">Sem busca</div>
+                <div class="lc-desc">Exibe imóveis diretamente, sem filtros.</div>
+            </label>
+        </div>
+
+    </div>
+
+    {# ── GRID ── #}
+    <div class="layout-group-title mb-1">Colunas de imóveis</div>
+    <p class="text-muted small mb-3">Número de colunas na grade de imóveis.</p>
+    <div class="row g-3 mb-4">
+
+        {% for ncol, label, desc in [('2','2 colunas','Cartões grandes, mais detalhes visíveis.'),
+                                      ('3','3 colunas','Equilíbrio entre quantidade e tamanho.'),
+                                      ('4','4 colunas','Mais imóveis por linha, visual compacto.')] %}
+        <div class="col-4">
+            <label class="layout-card w-100 {{ 'selecionado' if lg == ncol }}" onclick="sel(this,'layout_grid','{{ ncol }}')">
+                <div class="check-badge"><i class="bi bi-check"></i></div>
+                <div class="lc-preview d-flex flex-column justify-content-center">
+                    <div class="mm-grid">
+                        {% for _ in range(ncol|int) %}
+                        <div class="mm-card" style="height:24px;"></div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="lc-label">{{ label }}</div>
+                <div class="lc-desc">{{ desc }}</div>
+            </label>
+        </div>
+        {% endfor %}
+
+    </div>
+
+    {# ── LOGO ── #}
+    <div class="layout-group-title mb-1">Posição do logotipo</div>
+    <p class="text-muted small mb-3">Alinhamento do logo/nome na barra de navegação.</p>
+    <div class="row g-3 mb-4">
+
+        <div class="col-6 col-md-4">
+            <label class="layout-card w-100 {{ 'selecionado' if ll == 'esquerda' }}" onclick="sel(this,'layout_logo','esquerda')">
+                <div class="check-badge"><i class="bi bi-check"></i></div>
+                <div class="lc-preview d-flex flex-column">
+                    <div class="mm-navbar d-flex align-items-center px-1" style="height:14px;">
+                        <div class="mm-logo-box"></div>
+                        <div style="flex:1;"></div>
+                        <div style="width:8px;height:4px;background:rgba(255,255,255,.3);border-radius:1px;"></div>
+                    </div>
+                    <div class="mm-hero-full" style="flex:1;"></div>
+                </div>
+                <div class="lc-label">À esquerda</div>
+                <div class="lc-desc">Padrão Bootstrap. Logo no canto esquerdo.</div>
+            </label>
+        </div>
+
+        <div class="col-6 col-md-4">
+            <label class="layout-card w-100 {{ 'selecionado' if ll == 'centro' }}" onclick="sel(this,'layout_logo','centro')">
+                <div class="check-badge"><i class="bi bi-check"></i></div>
+                <div class="lc-preview d-flex flex-column">
+                    <div class="mm-navbar d-flex align-items-center justify-content-center" style="height:14px;">
+                        <div class="mm-logo-box"></div>
+                    </div>
+                    <div class="mm-hero-full" style="flex:1;"></div>
+                </div>
+                <div class="lc-label">Centralizado</div>
+                <div class="lc-desc">Logo centrado na navbar, visual mais limpo.</div>
+            </label>
+        </div>
+
+    </div>
+
+    {# Inputs hidden com os valores selecionados #}
+    <input type="hidden" name="layout_banner" id="layout_banner" value="{{ lb }}">
+    <input type="hidden" name="layout_busca"  id="layout_busca"  value="{{ lbu }}">
+    <input type="hidden" name="layout_grid"   id="layout_grid"   value="{{ lg }}">
+    <input type="hidden" name="layout_logo"   id="layout_logo"   value="{{ ll }}">
+
+    <button type="submit" class="btn btn-primary px-5 shadow-sm">
+        <i class="bi bi-check-lg me-1"></i> Salvar Layout
+    </button>
+</form>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Seleciona card de layout e atualiza o input hidden correspondente
+function sel(card, campo, valor) {
+    // Remove selecionado dos irmãos (mesmo grupo = mesmos cards com mesmo input hidden)
+    const allCards = document.querySelectorAll(`[onclick*="'${campo}'"]`);
+    allCards.forEach(c => c.classList.remove('selecionado'));
+    card.classList.add('selecionado');
+    document.getElementById(campo).value = valor;
+}
+
+function selecionarTema(id, card) {
+    document.querySelectorAll('.tema-card').forEach(c => c.classList.remove('selecionado'));
+    card.classList.add('selecionado');
+    document.getElementById('tema_id_input').value = id;
+}
+
+function previewLogo(input) {
+    if (!input.files || !input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        document.getElementById('logo-preview-img').src = e.target.result;
+        document.getElementById('logo-nova-preview').style.display = 'block';
+    };
+    reader.readAsDataURL(input.files[0]);
+}
+
+function previewBanner(input) {
+    if (!input.files || !input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const img = document.getElementById('preview-banner');
+        img.src = e.target.result;
+        img.style.display = 'block';
+        document.getElementById('drop-area').style.display = 'none';
+    };
+    reader.readAsDataURL(input.files[0]);
+}
+
+// Drag & drop no drop-area
+const dropArea = document.getElementById('drop-area');
+if (dropArea) {
+    ['dragenter','dragover'].forEach(ev =>
+        dropArea.addEventListener(ev, e => { e.preventDefault(); dropArea.classList.add('drag-over'); }));
+    ['dragleave','drop'].forEach(ev =>
+        dropArea.addEventListener(ev, e => { e.preventDefault(); dropArea.classList.remove('drag-over'); }));
+    dropArea.addEventListener('drop', e => {
+        const file = e.dataTransfer.files[0];
+        if (file) {
+            const input = document.getElementById('banner-input');
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            input.files = dt.files;
+            previewBanner(input);
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,221 @@
+{% extends 'site/base.html' %}
+{% from '_macros.html' import paginacao %}
+
+{% set lb  = g.imobiliaria.layout_banner or 'fullscreen' %}
+{% set lbu = g.imobiliaria.layout_busca  or 'abaixo' %}
+{% set lg  = g.imobiliaria.layout_grid   or '3' %}
+{% set ll  = g.imobiliaria.layout_logo   or 'esquerda' %}
+{% set col_class = {'2':'col-md-6','3':'col-md-4','4':'col-md-3'}[lg] %}
+{% set banner_h  = {'fullscreen':'500px','medio':'280px','nenhum':'0'}[lb] %}
+{% set banners_ativos = g.imobiliaria.banners %}
+
+{# ── Macro: formulário de busca ─────────────────────────────────────── #}
+{% macro form_busca(modo='horizontal') %}
+<form method="GET" action="{{ url_for('site.index') }}"
+      class="{{ 'py-3 px-2' if modo == 'horizontal' else 'p-0' }}">
+    <div class="{{ 'd-flex flex-wrap gap-2 align-items-end' if modo == 'horizontal' else 'd-flex flex-column gap-3' }}">
+
+        <div class="{{ 'flex-fill' if modo == 'horizontal' }}" style="{{ 'min-width:130px' if modo == 'horizontal' }}">
+            {% if modo == 'vertical' %}<label class="form-label small fw-bold mb-1">Finalidade</label>{% endif %}
+            <select name="finalidade" class="form-select form-select-sm">
+                <option value="">Comprar ou Alugar</option>
+                <option value="Venda"  {{ 'selected' if filtros.finalidade == 'Venda' }}>Venda</option>
+                <option value="Locação"{{ 'selected' if filtros.finalidade == 'Locação' }}>Locação</option>
+            </select>
+        </div>
+
+        <div class="{{ 'flex-fill' if modo == 'horizontal' }}" style="{{ 'min-width:130px' if modo == 'horizontal' }}">
+            {% if modo == 'vertical' %}<label class="form-label small fw-bold mb-1">Tipo</label>{% endif %}
+            <select name="tipo_id" class="form-select form-select-sm">
+                <option value="">Todos os tipos</option>
+                {% for t in tipos %}
+                <option value="{{ t.id }}" {{ 'selected' if filtros.tipo_id == t.id|string }}>{{ t.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="{{ 'flex-fill' if modo == 'horizontal' }}" style="{{ 'min-width:160px' if modo == 'horizontal' }}">
+            {% if modo == 'vertical' %}<label class="form-label small fw-bold mb-1">Cidade ou bairro</label>{% endif %}
+            <input type="text" name="cidade" class="form-control form-control-sm"
+                   placeholder="Cidade ou bairro" value="{{ filtros.cidade }}">
+        </div>
+
+        <div class="{{ 'flex-fill' if modo == 'horizontal' }}" style="{{ 'min-width:130px' if modo == 'horizontal' }}">
+            {% if modo == 'vertical' %}<label class="form-label small fw-bold mb-1">Preço máximo</label>{% endif %}
+            <select name="preco_max" class="form-select form-select-sm">
+                <option value="">Qualquer preço</option>
+                {% for val, label in [('200000','Até R$ 200 mil'),('400000','Até R$ 400 mil'),
+                                      ('600000','Até R$ 600 mil'),('1000000','Até R$ 1 milhão'),
+                                      ('2000000','Até R$ 2 milhões')] %}
+                <option value="{{ val }}" {{ 'selected' if filtros.preco_max == val }}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="{{ 'flex-fill' if modo == 'horizontal' }}" style="{{ 'min-width:110px' if modo == 'horizontal' }}">
+            {% if modo == 'vertical' %}<label class="form-label small fw-bold mb-1">Quartos</label>{% endif %}
+            <select name="quartos" class="form-select form-select-sm">
+                <option value="">Qualquer</option>
+                {% for n in [1,2,3,4] %}
+                <option value="{{ n }}" {{ 'selected' if filtros.quartos == n|string }}>{{ n }}{% if n==4 %}+{% endif %} quarto{{ 's' if n > 1 }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="{{ 'd-flex gap-1' if modo == 'horizontal' else 'd-grid gap-2 pt-2 border-top mt-1' }}">
+            <button type="submit" class="btn btn-primary btn-sm px-3">
+                <i class="bi bi-search me-1"></i>{{ ' Buscar' if modo == 'vertical' else '' }}
+            </button>
+            {% if filtros_ativos %}
+            <a href="{{ url_for('site.index') }}" class="btn btn-outline-secondary btn-sm px-2"
+               title="Limpar filtros"><i class="bi bi-x-lg"></i></a>
+            {% endif %}
+        </div>
+
+    </div>
+</form>
+{% endmacro %}
+
+{% block head %}
+<style>
+    /* Logo centrado */
+    {% if ll == 'centro' %}
+    .navbar .navbar-brand { position: absolute; left: 50%; transform: translateX(-50%); }
+    {% endif %}
+
+    /* Busca dentro do banner */
+    .busca-overlay {
+        position: absolute; bottom: 0; left: 0; right: 0;
+        background: rgba(0,0,0,.45); backdrop-filter: blur(2px);
+        padding: .75rem 0;
+    }
+    .busca-overlay .form-select,
+    .busca-overlay .form-control { background: rgba(255,255,255,.92); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ══════════════════════════════════════════════════════════
+   BLOCO: BANNER / HERO
+══════════════════════════════════════════════════════════ #}
+{% if lb != 'nenhum' %}
+<div class="position-relative">
+
+    {# Carousel de banners ou hero estático #}
+    {% if banners_ativos %}
+    <div id="carouselBanners" class="carousel slide" data-bs-ride="carousel">
+        <div class="carousel-inner">
+            {% for banner in banners_ativos %}
+            <div class="carousel-item {{ 'active' if loop.first }}">
+                <img src="{{ url_for('static', filename=banner.url_imagem) }}"
+                     class="d-block w-100"
+                     style="height:{{ banner_h }};object-fit:cover;">
+                {% if banner.titulo and lbu != 'banner' %}
+                <div class="carousel-caption d-none d-md-block"
+                     style="background:rgba(0,0,0,.4);border-radius:10px;padding:1rem 1.5rem;">
+                    <h3 class="fw-bold mb-1">{{ banner.titulo }}</h3>
+                    {% if banner.subtitulo %}<p class="mb-0 opacity-90">{{ banner.subtitulo }}</p>{% endif %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% if banners_ativos|length > 1 %}
+        <button class="carousel-control-prev" type="button" data-bs-target="#carouselBanners" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon"></span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#carouselBanners" data-bs-slide="next">
+            <span class="carousel-control-next-icon"></span>
+        </button>
+        <div class="carousel-indicators">
+            {% for banner in banners_ativos %}
+            <button type="button" data-bs-target="#carouselBanners"
+                    data-bs-slide-to="{{ loop.index0 }}"
+                    {{ 'class=active aria-current=true' if loop.first }}></button>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="hero-section" style="padding:{{ '80px 0' if lb == 'fullscreen' else '36px 0' }}">
+        <div class="container text-center">
+            <h1 class="fw-bold {{ 'display-5' if lb == 'fullscreen' else 'h2' }} mb-2">
+                {{ g.imobiliaria.nome }}
+            </h1>
+            <p class="opacity-90 mb-0">Encontre o imóvel ideal para você</p>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Busca DENTRO do banner #}
+    {% if lbu == 'banner' %}
+    <div class="busca-overlay">
+        <div class="container">
+            {{ form_busca('horizontal') }}
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endif %}
+
+{# ══════════════════════════════════════════════════════════
+   BLOCO: BUSCA ABAIXO DO BANNER
+══════════════════════════════════════════════════════════ #}
+{% if lbu == 'abaixo' %}
+<div class="bg-white border-bottom shadow-sm">
+    <div class="container">
+        {{ form_busca('horizontal') }}
+    </div>
+</div>
+{% endif %}
+
+{# ══════════════════════════════════════════════════════════
+   CONTEÚDO PRINCIPAL
+══════════════════════════════════════════════════════════ #}
+<div class="container py-4">
+
+    {# Aviso de filtros ativos #}
+    {% if filtros_ativos %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <p class="text-muted small mb-0">
+            <i class="bi bi-funnel-fill me-1 text-primary"></i>
+            Exibindo <strong>{{ pagination.total }}</strong> imóve{{ 'l' if pagination.total == 1 else 'is' }} encontrado{{ '' if pagination.total == 1 else 's' }}
+        </p>
+        <a href="{{ url_for('site.index') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-x-lg me-1"></i> Limpar filtros
+        </a>
+    </div>
+    {% endif %}
+
+    {% if lbu == 'lateral' %}
+    {# ── Layout lateral: sidebar + grid ── #}
+    <div class="row g-4">
+        <div class="col-lg-3">
+            <div class="card border-0 shadow-sm sticky-top" style="top:80px;">
+                <div class="card-body p-3">
+                    <h6 class="fw-bold mb-3">
+                        <i class="bi bi-funnel text-primary me-1"></i> Filtrar imóveis
+                    </h6>
+                    {{ form_busca('vertical') }}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-9">
+            <div class="row g-3">
+                {% include 'site/_grid_imoveis.html' %}
+            </div>
+            {{ paginacao(pagination) }}
+        </div>
+    </div>
+    {% else %}
+    {# ── Layout padrão: grid full-width ── #}
+    <div class="row g-3">
+        {% include 'site/_grid_imoveis.html' %}
+    </div>
+    {{ paginacao(pagination) }}
+    {% endif %}
+
+</div>
+{% endblock %}

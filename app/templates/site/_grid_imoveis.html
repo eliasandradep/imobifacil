@@ -1,0 +1,47 @@
+{% if imoveis %}
+    {% for imovel in imoveis %}
+    {% set foto_capa = imovel.fotos | selectattr('principal', 'equalto', True) | first or imovel.fotos | first %}
+    <div class="{{ col_class }} col-sm-6 col-12 mb-2">
+        <div class="card h-100 border-0 shadow-sm">
+            <a href="{{ url_for('site.detalhes', id=imovel.id) }}" class="text-decoration-none">
+                {% if foto_capa %}
+                <img src="{{ url_for('static', filename=foto_capa.url) }}"
+                     class="card-img-top" style="height:200px;object-fit:cover;">
+                {% else %}
+                <div class="card-img-top bg-light d-flex align-items-center justify-content-center"
+                     style="height:200px;">
+                    <i class="bi bi-image text-muted" style="font-size:2.5rem;"></i>
+                </div>
+                {% endif %}
+            </a>
+            <div class="card-body d-flex flex-column">
+                <span class="badge bg-light text-dark border mb-1 align-self-start"
+                      style="font-size:.7rem;">{{ imovel.tipo.nome }} — {{ imovel.finalidade }}</span>
+                <h6 class="fw-bold text-truncate mb-1">{{ imovel.titulo }}</h6>
+                <p class="text-primary fw-bold mb-1 fs-5">{{ imovel.preco | moeda }}</p>
+                <p class="text-muted small mb-2">
+                    <i class="bi bi-geo-alt me-1"></i>{{ imovel.bairro }}, {{ imovel.cidade }}
+                </p>
+                <div class="d-flex gap-3 text-muted small mb-3">
+                    {% if imovel.quartos %}<span><i class="bi bi-door-open me-1"></i>{{ imovel.quartos }} qts</span>{% endif %}
+                    {% if imovel.vagas   %}<span><i class="bi bi-car-front me-1"></i>{{ imovel.vagas }} vg</span>{% endif %}
+                    {% if imovel.area_util %}<span><i class="bi bi-arrows-fullscreen me-1"></i>{{ imovel.area_util|int }}m²</span>{% endif %}
+                </div>
+                <a href="{{ url_for('site.detalhes', id=imovel.id) }}"
+                   class="btn btn-primary btn-sm mt-auto">Ver Imóvel</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="col-12 text-center py-5">
+        <i class="bi bi-house-slash display-1 text-muted opacity-25"></i>
+        <h5 class="mt-3 text-muted">Nenhum imóvel encontrado</h5>
+        {% if filtros_ativos %}
+        <p class="text-muted small">Tente ajustar os filtros de busca.</p>
+        <a href="{{ url_for('site.index') }}" class="btn btn-outline-secondary btn-sm mt-1">
+            Limpar filtros
+        </a>
+        {% endif %}
+    </div>
+{% endif %}

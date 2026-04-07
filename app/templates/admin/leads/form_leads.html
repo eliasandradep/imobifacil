@@ -1,0 +1,243 @@
+{% extends 'admin/base.html' %}
+
+{% block head %}
+<style>
+    .card { border: none; border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,.05); margin-bottom: 1.5rem; }
+    .card-header {
+        background: #fff !important;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: .75rem;
+        letter-spacing: 1px;
+        border-bottom: 1px solid #eee;
+        color: #555;
+    }
+    .origem-card {
+        border: 2px solid #dee2e6;
+        border-radius: 10px;
+        padding: 1rem .75rem;
+        cursor: pointer;
+        transition: all .2s;
+        text-align: center;
+        user-select: none;
+    }
+    .origem-card:hover { border-color: #0d6efd; background: #f0f4ff; }
+    .origem-card.selected { border-color: #0d6efd; background: #e7f1ff; }
+    .origem-card i { font-size: 1.6rem; display: block; margin-bottom: .3rem; }
+    .origem-card span { font-size: .78rem; font-weight: 600; color: #444; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="h3 fw-bold mb-0">
+            {{ 'Editar Lead' if lead else 'Novo Lead' }}
+        </h2>
+        <small class="text-muted">
+            {{ 'Atualize as informações do contato' if lead else 'Cadastre um novo contato manualmente' }}
+        </small>
+    </div>
+    <a href="{{ url_for('leads.listar_leads') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i> Voltar
+    </a>
+</div>
+
+<form method="POST">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+
+            <!-- DADOS PESSOAIS -->
+            <div class="card">
+                <div class="card-header p-3">Dados do Contato</div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Nome completo *</label>
+                            <input type="text" name="nome" class="form-control form-control-lg"
+                                   value="{{ lead.nome if lead }}"
+                                   placeholder="Ex: Maria Fernanda Santos"
+                                   required autofocus>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Telefone / WhatsApp *</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light">
+                                    <i class="bi bi-whatsapp text-success"></i>
+                                </span>
+                                <input type="text" name="telefone" id="telefone"
+                                       class="form-control"
+                                       value="{{ lead.telefone if lead }}"
+                                       placeholder="(11) 99999-9999"
+                                       required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">E-mail</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light">
+                                    <i class="bi bi-envelope text-muted"></i>
+                                </span>
+                                <input type="email" name="email" class="form-control"
+                                       value="{{ lead.email if lead }}"
+                                       placeholder="exemplo@email.com">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ORIGEM -->
+            <div class="card">
+                <div class="card-header p-3">Origem do Lead</div>
+                <div class="card-body p-4">
+                    <input type="hidden" name="origem" id="origem_hidden"
+                           value="{{ lead.origem if lead else 'Manual' }}">
+                    <div class="row g-2" id="origens">
+                        {% set origem_atual = lead.origem if lead else 'Manual' %}
+
+                        <div class="col-4 col-md-2">
+                            <div class="origem-card {{ 'selected' if origem_atual == 'Manual' }}"
+                                 onclick="selecionarOrigem(this, 'Manual')">
+                                <i class="bi bi-person-fill text-purple" style="color:#6f42c1;"></i>
+                                <span>Manual</span>
+                            </div>
+                        </div>
+                        <div class="col-4 col-md-2">
+                            <div class="origem-card {{ 'selected' if origem_atual == 'Site' }}"
+                                 onclick="selecionarOrigem(this, 'Site')">
+                                <i class="bi bi-globe text-info"></i>
+                                <span>Site</span>
+                            </div>
+                        </div>
+                        <div class="col-4 col-md-2">
+                            <div class="origem-card {{ 'selected' if origem_atual == 'WhatsApp' }}"
+                                 onclick="selecionarOrigem(this, 'WhatsApp')">
+                                <i class="bi bi-whatsapp" style="color:#25d366;"></i>
+                                <span>WhatsApp</span>
+                            </div>
+                        </div>
+                        <div class="col-4 col-md-2">
+                            <div class="origem-card {{ 'selected' if origem_atual == 'Facebook' }}"
+                                 onclick="selecionarOrigem(this, 'Facebook')">
+                                <i class="bi bi-facebook" style="color:#1877f2;"></i>
+                                <span>Facebook</span>
+                            </div>
+                        </div>
+                        <div class="col-4 col-md-2">
+                            <div class="origem-card {{ 'selected' if origem_atual == 'Instagram' }}"
+                                 onclick="selecionarOrigem(this, 'Instagram')">
+                                <i class="bi bi-instagram" style="color:#c13584;"></i>
+                                <span>Instagram</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STATUS (só na edição) -->
+            {% if lead %}
+            <div class="card">
+                <div class="card-header p-3">Status do Lead</div>
+                <div class="card-body p-4">
+                    <div class="row g-2">
+                        {% for s, cor, icone in [
+                            ('Novo',        'primary',   'person-fill-add'),
+                            ('Qualificado', 'success',   'patch-check-fill'),
+                            ('Arquivado',   'secondary', 'archive-fill'),
+                            ('Perdido',     'danger',    'x-circle-fill')
+                        ] %}
+                        <div class="col-6 col-md-3">
+                            <div class="form-check card p-3 text-center
+                                        {{ 'border-' + cor if lead.status == s }}
+                                        mb-0"
+                                 style="{{ 'border-width:2px!important; background:#f8f9fa;' if lead.status == s }}">
+                                <input class="form-check-input visually-hidden"
+                                       type="radio" name="status"
+                                       id="status_{{ s }}" value="{{ s }}"
+                                       {{ 'checked' if lead.status == s }}>
+                                <label class="form-check-label w-100" for="status_{{ s }}"
+                                       style="cursor:pointer;">
+                                    <i class="bi bi-{{ icone }} text-{{ cor }} d-block mb-1"
+                                       style="font-size:1.4rem;"></i>
+                                    <span class="small fw-bold">{{ s }}</span>
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- MENSAGEM / INTERESSE -->
+            <div class="card">
+                <div class="card-header p-3">Mensagem / Interesse</div>
+                <div class="card-body p-4">
+                    <textarea name="mensagem" class="form-control" rows="4"
+                              placeholder="Descreva o interesse do lead, qual imóvel ele perguntou, observações importantes...">{{ lead.mensagem if lead }}</textarea>
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Use este campo para anotar o que o cliente procura ou qualquer detalhe relevante.
+                    </small>
+                </div>
+            </div>
+
+            <!-- BOTÕES -->
+            <div class="d-flex justify-content-between mb-5">
+                <a href="{{ url_for('leads.listar_leads') }}"
+                   class="btn btn-outline-secondary px-4">
+                    <i class="bi bi-x-lg me-1"></i> Cancelar
+                </a>
+                <button type="submit" class="btn btn-primary btn-lg px-5 shadow-sm">
+                    <i class="bi bi-check-lg me-1"></i>
+                    {{ 'Salvar Alterações' if lead else 'Cadastrar Lead' }}
+                </button>
+            </div>
+
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Seleção visual de origem
+function selecionarOrigem(el, valor) {
+    document.querySelectorAll('.origem-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('origem_hidden').value = valor;
+}
+
+// Máscara de telefone: (11) 99999-9999
+document.getElementById('telefone').addEventListener('input', function () {
+    let v = this.value.replace(/\D/g, '').slice(0, 11);
+    if (v.length > 10) {
+        v = v.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
+    } else if (v.length > 6) {
+        v = v.replace(/^(\d{2})(\d{4})(\d{0,4})$/, '($1) $2-$3');
+    } else if (v.length > 2) {
+        v = v.replace(/^(\d{2})(\d{0,5})$/, '($1) $2');
+    } else if (v.length > 0) {
+        v = v.replace(/^(\d{0,2})$/, '($1');
+    }
+    this.value = v;
+});
+
+// Highlight visual nos radio de status ao clicar
+document.querySelectorAll('input[name="status"]').forEach(radio => {
+    radio.addEventListener('change', function () {
+        document.querySelectorAll('input[name="status"]').forEach(r => {
+            r.closest('.card').style.borderWidth = '';
+            r.closest('.card').style.background  = '';
+        });
+        if (this.checked) {
+            const card = this.closest('.card');
+            card.style.borderWidth  = '2px';
+            card.style.background   = '#f8f9fa';
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends 'admin/base.html' %}
+{% from '_macros.html' import paginacao %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="h4 fw-bold">Gestão de Imóveis</h2>
+    <a href="{{ url_for('admin.novo_imovel') }}" class="btn btn-primary shadow-sm">
+        <i class="bi bi-house-add"></i> Novo Imóvel
+    </a>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4">Ref.</th>
+                    <th>Título</th>
+                    <th>Tipo</th>
+                    <th>Valor</th>
+                    <th class="text-center">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for imovel in imoveis %}
+                <tr>
+                    <td class="ps-4"><span class="badge bg-light text-dark border">{{ imovel.codigo_ref }}</span></td>
+                    <td class="fw-bold">{{ imovel.titulo }}</td>
+                    <td>{{ imovel.tipo.nome }}</td>
+                    <td class="text-primary fw-bold">{{ imovel.preco | moeda }}</td>
+                    <td class="text-center">
+                        <div class="btn-group shadow-sm">
+                            <a href="{{ url_for('admin.editar_imovel', id=imovel.id) }}" class="btn btn-sm btn-outline-primary" title="Editar">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+                            <button type="button" class="btn btn-sm btn-outline-danger" title="Excluir" onclick="confirmarExclusao('{{ imovel.id }}', '{{ imovel.codigo_ref }}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {{ paginacao(pagination) }}
+</div>
+
+<script>
+function confirmarExclusao(id, ref) {
+    if (confirm(`Deseja realmente excluir o imóvel ${ref}?`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = "{{ url_for('admin.listar_imoveis') }}/excluir/" + id;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

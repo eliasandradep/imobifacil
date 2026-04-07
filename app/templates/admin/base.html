@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block page_title %}Painel{% endblock %} — ImobiFácil</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+    <style>
+        /* ── Layout base ─────────────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            display: flex;
+            min-height: 100vh;
+            background: #f0f2f5;
+            margin: 0;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        /* ── Sidebar ─────────────────────────────────────────── */
+        #sidebar {
+            width: 250px;
+            background: #0d1b2a;
+            color: #fff;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+        }
+        #sidebar .brand {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,.08);
+        }
+        #sidebar .brand h4 { margin: 0; font-weight: 800; letter-spacing: -.5px; }
+        #sidebar .brand small { color: rgba(255,255,255,.4); font-size: .7rem; }
+
+        /* Grupos de menu */
+        .nav-group-label {
+            padding: .75rem 1.5rem .25rem;
+            font-size: .6rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,.3);
+        }
+        .nav-link-side {
+            display: flex;
+            align-items: center;
+            gap: .6rem;
+            padding: .65rem 1.5rem;
+            color: rgba(255,255,255,.65);
+            text-decoration: none;
+            font-size: .88rem;
+            transition: background .15s, color .15s, border-left .15s;
+            border-left: 3px solid transparent;
+        }
+        .nav-link-side i { font-size: 1rem; width: 1.1rem; text-align: center; }
+        .nav-link-side:hover {
+            background: rgba(255,255,255,.07);
+            color: #fff;
+        }
+        .nav-link-side.active {
+            background: rgba(52, 152, 219, .18);
+            color: #fff;
+            border-left-color: #3498db;
+        }
+        .nav-link-side .badge-nav {
+            margin-left: auto;
+            font-size: .65rem;
+            padding: .2rem .5rem;
+        }
+
+        /* ── Conteúdo principal ──────────────────────────────── */
+        #main-content {
+            flex: 1;
+            padding: 1.75rem 2rem;
+            overflow-y: auto;
+            /* Impede qualquer overlay/backdrop de bloquear a tela */
+        }
+        /* Garante que backdrops de modal não travem a UI */
+        .modal-backdrop { display: none !important; }
+
+        /* ── Cards genéricos ─────────────────────────────────── */
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.06);
+        }
+
+        /* ── Alertas flash ───────────────────────────────────── */
+        .flash-area .alert {
+            border: none;
+            border-radius: 8px;
+            font-size: .9rem;
+        }
+    </style>
+
+    {% block head %}{% endblock %}
+</head>
+<body>
+
+<!-- ═══════════ SIDEBAR ═══════════ -->
+<nav id="sidebar">
+    <div class="brand">
+        <h4>Imobi<span style="color:#3498db;">Fácil</span></h4>
+        <small>Painel Administrativo</small>
+    </div>
+
+    <div class="mt-2 flex-grow-1">
+
+        <!-- Dashboard -->
+        <a href="{{ url_for('admin.dashboard') }}"
+           class="nav-link-side {% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
+            <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+
+        <!-- ── Inventário ── -->
+        <div class="nav-group-label">Inventário</div>
+
+        <a href="{{ url_for('admin.listar_imoveis') }}"
+           class="nav-link-side {% if request.endpoint in ['admin.listar_imoveis','admin.novo_imovel','admin.editar_imovel'] %}active{% endif %}">
+            <i class="bi bi-house-door"></i> Imóveis
+        </a>
+
+        <a href="{{ url_for('admin.listar_tipos') }}"
+           class="nav-link-side {% if request.endpoint in ['admin.listar_tipos','admin.novo_tipo'] %}active{% endif %}">
+            <i class="bi bi-tags"></i> Tipos de Imóveis
+        </a>
+
+        <!-- ── CRM ── -->
+        <div class="nav-group-label">CRM</div>
+
+        <a href="{{ url_for('leads.listar_leads') }}"
+           class="nav-link-side {% if 'leads.' in request.endpoint %}active{% endif %}">
+            <i class="bi bi-person-lines-fill"></i> Leads
+            {# Badge de novos leads #}
+            {% if g.imobiliaria %}
+                {% set novos = namespace(n=0) %}
+                {# O contador será injetado pelo contexto global abaixo #}
+                {% if leads_novos_count is defined and leads_novos_count > 0 %}
+                <span class="badge bg-danger badge-nav">{{ leads_novos_count }}</span>
+                {% endif %}
+            {% endif %}
+        </a>
+
+        <!-- ── Site ── -->
+        <div class="nav-group-label">Site</div>
+
+        <a href="{{ url_for('admin.meusite') }}"
+           class="nav-link-side {% if 'admin.meusite' in request.endpoint or request.endpoint in ['admin.salvar_tema','admin.salvar_identidade','admin.novo_banner','admin.excluir_banner'] %}active{% endif %}">
+            <i class="bi bi-palette"></i> Meu Site
+        </a>
+
+        <a href="{{ url_for('site.index') }}" target="_blank"
+           class="nav-link-side">
+            <i class="bi bi-box-arrow-up-right"></i> Ver Site
+        </a>
+
+    </div>
+
+    <!-- Rodapé da sidebar -->
+    <div class="border-top border-secondary p-3" style="border-color: rgba(255,255,255,.08) !important;">
+        {% if current_user.is_authenticated %}
+        <div class="d-flex align-items-center gap-2 mb-2">
+            <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold"
+                 style="width:30px;height:30px;font-size:.75rem;flex-shrink:0;">
+                {{ current_user.nome[0].upper() if current_user.nome else 'U' }}
+            </div>
+            <div style="overflow:hidden;">
+                <div class="text-white fw-bold" style="font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                    {{ current_user.nome }}
+                </div>
+                <div style="font-size:.7rem;color:rgba(255,255,255,.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                    {{ g.imobiliaria.nome if g.imobiliaria else '' }}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        <a href="{{ url_for('auth.logout') }}" class="nav-link-side text-danger ps-0" style="border:none;">
+            <i class="bi bi-box-arrow-right"></i> Sair
+        </a>
+    </div>
+</nav>
+
+<!-- ═══════════ CONTEÚDO PRINCIPAL ═══════════ -->
+<main id="main-content">
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-area mb-3">
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm" role="alert">
+                {% if category == 'success' %}<i class="bi bi-check-circle-fill me-2"></i>
+                {% elif category == 'danger'  %}<i class="bi bi-exclamation-triangle-fill me-2"></i>
+                {% elif category == 'warning' %}<i class="bi bi-exclamation-circle-fill me-2"></i>
+                {% elif category == 'info'    %}<i class="bi bi-info-circle-fill me-2"></i>
+                {% endif %}
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

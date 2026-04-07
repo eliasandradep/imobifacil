@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %} - {{ g.imobiliaria.nome }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        /* ── Variáveis por tema ────────────────────────────────── */
+        {% set tema = g.imobiliaria.tema_ativo or 'clean' %}
+
+        {% if tema == 'clean' %}
+        :root { --prim:#0d6efd; --prim-dark:#0a58ca; --navbar-bg:#ffffff; --navbar-color:#212529;
+                --hero-from:#0d1b2a; --hero-to:#1a3a5c; --footer-bg:#f8f9fa; --footer-color:#495057;
+                --navbar-link:#555; }
+        {% elif tema == 'escuro' %}
+        :root { --prim:#e94560; --prim-dark:#c73652; --navbar-bg:#0f3460; --navbar-color:#fff;
+                --hero-from:#1a1a2e; --hero-to:#16213e; --footer-bg:#0f3460; --footer-color:rgba(255,255,255,.75);
+                --navbar-link:rgba(255,255,255,.8); }
+        {% elif tema == 'verde' %}
+        :root { --prim:#52b788; --prim-dark:#40916c; --navbar-bg:#1b4332; --navbar-color:#fff;
+                --hero-from:#081c15; --hero-to:#1b4332; --footer-bg:#081c15; --footer-color:rgba(255,255,255,.75);
+                --navbar-link:rgba(255,255,255,.8); }
+        {% elif tema == 'laranja' %}
+        :root { --prim:#f4831f; --prim-dark:#d9700e; --navbar-bg:#ffffff; --navbar-color:#212529;
+                --hero-from:#7f3100; --hero-to:#c25c00; --footer-bg:#fff3e0; --footer-color:#5d4037;
+                --navbar-link:#555; }
+        {% elif tema == 'roxo' %}
+        :root { --prim:#7b2fbe; --prim-dark:#6a1f9a; --navbar-bg:#2d0057; --navbar-color:#fff;
+                --hero-from:#1a0033; --hero-to:#2d0057; --footer-bg:#1a0033; --footer-color:rgba(255,255,255,.7);
+                --navbar-link:rgba(255,255,255,.8); }
+        {% elif tema == 'cinza' %}
+        :root { --prim:#6c757d; --prim-dark:#495057; --navbar-bg:#212529; --navbar-color:#fff;
+                --hero-from:#212529; --hero-to:#495057; --footer-bg:#343a40; --footer-color:rgba(255,255,255,.7);
+                --navbar-link:rgba(255,255,255,.8); }
+        {% endif %}
+
+        /* ── Aplicação das variáveis ───────────────────────────── */
+        .navbar                { background-color: var(--navbar-bg) !important;
+                                 box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+        .navbar-brand          { font-weight: 700; color: var(--navbar-color) !important; }
+        .navbar .nav-link      { color: var(--navbar-link) !important; }
+        .navbar .nav-link:hover{ color: var(--navbar-color) !important; }
+        .navbar-toggler-icon   { filter: {{ 'invert(1)' if tema in ['escuro','verde','roxo','cinza'] else 'none' }}; }
+
+        .btn-primary           { background-color: var(--prim) !important;
+                                 border-color: var(--prim) !important; color: #fff !important; }
+        .btn-primary:hover     { background-color: var(--prim-dark) !important;
+                                 border-color: var(--prim-dark) !important; }
+        .text-primary          { color: var(--prim) !important; }
+
+        .hero-section          { background: linear-gradient(135deg, var(--hero-from), var(--hero-to));
+                                 color: #fff; padding: 80px 0; }
+
+        .footer                { background: var(--footer-bg); color: var(--footer-color);
+                                 padding: 40px 0; margin-top: 50px; }
+        .footer a              { color: var(--footer-color); }
+        .footer a:hover        { color: var(--prim); }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg sticky-top">
+    <div class="container">
+        <a class="navbar-brand" href="{{ url_for('site.index') }}">
+            {% if g.imobiliaria.logo_url %}
+            <img src="{{ url_for('static', filename=g.imobiliaria.logo_url) }}"
+                 alt="{{ g.imobiliaria.nome }}" style="max-height: 48px; max-width: 180px; object-fit: contain;">
+            {% else %}
+            <i class="bi bi-building me-1"></i>{{ g.imobiliaria.nome }}
+            {% endif %}
+        </a>
+        <button class="navbar-toggler border-0" type="button"
+                data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto align-items-lg-center">
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('site.index') }}">Início</a></li>
+                <li class="nav-item"><a class="nav-link" href="#contato">Contato</a></li>
+                <li class="nav-item ms-lg-2">
+                    <a class="btn btn-primary btn-sm px-3"
+                       href="{{ url_for('auth.login') }}">Acesso Restrito</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+{% block content %}{% endblock %}
+
+<footer class="footer" id="contato">
+    <div class="container text-center">
+        {% if g.imobiliaria.logo_url %}
+        <img src="{{ url_for('static', filename=g.imobiliaria.logo_url) }}"
+             alt="{{ g.imobiliaria.nome }}" style="max-height: 50px; object-fit: contain; margin-bottom: .75rem;">
+        {% else %}
+        <h5 class="fw-bold">{{ g.imobiliaria.nome }}</h5>
+        {% endif %}
+        <p class="small mb-3 opacity-75">Encontre o imóvel dos seus sonhos conosco.</p>
+        <div class="mb-3 d-flex justify-content-center gap-3">
+            <a href="#" title="Instagram"><i class="bi bi-instagram fs-5"></i></a>
+            <a href="#" title="Facebook"><i class="bi bi-facebook fs-5"></i></a>
+            {% if g.imobiliaria.whatsapp %}
+            <a href="https://wa.me/{{ g.imobiliaria.whatsapp }}" target="_blank" title="WhatsApp">
+                <i class="bi bi-whatsapp fs-5"></i>
+            </a>
+            {% else %}
+            <a href="#" title="WhatsApp"><i class="bi bi-whatsapp fs-5"></i></a>
+            {% endif %}
+        </div>
+        <hr class="opacity-25">
+        <small class="opacity-50">&copy; {{ now.year if now is defined else '2026' }} {{ g.imobiliaria.nome }} — Powered by ImobiFácil</small>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

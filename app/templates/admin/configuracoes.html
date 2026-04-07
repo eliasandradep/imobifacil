@@ -1,0 +1,218 @@
+{% extends 'admin/base.html' %}
+
+{% block head %}
+<style>
+    .cfg-section {
+        background: #fff;
+        border-radius: 14px;
+        box-shadow: 0 2px 10px rgba(0,0,0,.06);
+        padding: 1.75rem 2rem;
+        margin-bottom: 1.5rem;
+    }
+    .cfg-section-title {
+        font-size: .7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #0d6efd;
+        margin-bottom: 1.25rem;
+        padding-bottom: .6rem;
+        border-bottom: 2px solid #e8f0fe;
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+    }
+    .cfg-hint {
+        font-size: .75rem;
+        color: #aaa;
+        margin-top: .3rem;
+    }
+    .ordenacao-card {
+        border: 2px solid #dee2e6;
+        border-radius: 10px;
+        padding: .75rem 1rem;
+        cursor: pointer;
+        transition: all .15s;
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+    }
+    .ordenacao-card:hover { border-color: #0d6efd; background: #f8f9ff; }
+    .ordenacao-card.selecionado { border-color: #0d6efd; background: #e8f0fe; }
+    .ordenacao-card .oc-icon { font-size: 1.2rem; width: 28px; text-align: center; }
+    .ordenacao-card .oc-label { font-size: .82rem; font-weight: 600; color: #333; line-height: 1.2; }
+    .ordenacao-card .oc-desc  { font-size: .71rem; color: #999; }
+</style>
+{% endblock %}
+
+{% block content %}
+<form method="POST" action="{{ url_for('admin.configuracoes') }}">
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="h3 fw-bold mb-0">Configurações Gerais</h2>
+        <small class="text-muted">Dados de contato e comportamento do site público</small>
+    </div>
+    <button type="submit" class="btn btn-primary px-4 shadow-sm">
+        <i class="bi bi-check-lg me-1"></i> Salvar Configurações
+    </button>
+</div>
+
+{# ── SEÇÃO 1: CONTATO ── #}
+<div class="cfg-section">
+    <div class="cfg-section-title">
+        <i class="bi bi-envelope-fill"></i> Contato
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label class="form-label fw-bold small">
+                E-mail para receber mensagens e leads
+            </label>
+            <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-inbox-fill text-primary"></i></span>
+                <input type="email" name="email_contato" class="form-control"
+                       placeholder="ex: contato@minhaImobiliaria.com.br"
+                       value="{{ imob.email_contato or '' }}">
+            </div>
+            <p class="cfg-hint">Este endereço receberá notificações de novos leads e mensagens enviadas pelo site.</p>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label fw-bold small">
+                E-mail para exibição no site
+            </label>
+            <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-at text-muted"></i></span>
+                <input type="email" name="email_exibicao" class="form-control"
+                       placeholder="ex: vendas@minhaImobiliaria.com.br"
+                       value="{{ imob.email_exibicao or '' }}">
+            </div>
+            <p class="cfg-hint">Exibido no rodapé do site. Pode ser diferente do e-mail de recebimento.</p>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label fw-bold small">Telefone para exibição no site</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-telephone-fill text-muted"></i></span>
+                <input type="text" name="telefone" class="form-control"
+                       placeholder="ex: (11) 3000-0000"
+                       value="{{ imob.telefone or '' }}">
+            </div>
+            <p class="cfg-hint">Telefone fixo exibido no rodapé. O WhatsApp é configurado em <a href="{{ url_for('admin.meusite', tab='identidade') }}">Meu Site → Identidade</a>.</p>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label fw-bold small">Slogan / Descrição</label>
+            <input type="text" name="slogan" class="form-control"
+                   placeholder="ex: Os melhores imóveis da região"
+                   value="{{ imob.slogan or '' }}"
+                   maxlength="200">
+            <p class="cfg-hint">Texto exibido no rodapé e na seção hero do site quando não há banner.</p>
+        </div>
+    </div>
+</div>
+
+{# ── SEÇÃO 2: EXIBIÇÃO DE IMÓVEIS ── #}
+<div class="cfg-section">
+    <div class="cfg-section-title">
+        <i class="bi bi-house-door-fill"></i> Exibição de Imóveis
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <label class="form-label fw-bold small d-block mb-2">Ordenação padrão da listagem</label>
+
+            {% set ord_atual = imob.ordenacao_imoveis or 'recentes' %}
+            {% for val, icone, label, desc in [
+                ('recentes',   'bi-clock-history',    'Últimos Cadastrados',  'Imóveis mais recentes aparecem primeiro.'),
+                ('destaque',   'bi-star-fill',         'Destaques Primeiro',  'Imóveis marcados como destaque sobem para o topo.'),
+                ('preco_asc',  'bi-sort-numeric-down', 'Menor Preço',         'Ordenação crescente pelo valor do imóvel.'),
+                ('preco_desc', 'bi-sort-numeric-up',   'Maior Preço',         'Ordenação decrescente pelo valor do imóvel.'),
+            ] %}
+            <label class="ordenacao-card mb-2 w-100 {{ 'selecionado' if ord_atual == val }}"
+                   onclick="selOrd(this, '{{ val }}')">
+                <i class="bi {{ icone }} oc-icon text-primary"></i>
+                <div>
+                    <div class="oc-label">{{ label }}</div>
+                    <div class="oc-desc">{{ desc }}</div>
+                </div>
+            </label>
+            {% endfor %}
+            <input type="hidden" name="ordenacao_imoveis" id="ordenacao_imoveis" value="{{ ord_atual }}">
+        </div>
+
+        <div class="col-lg-5">
+            <label class="form-label fw-bold small">Imóveis por página</label>
+            <div class="row g-2 mt-0">
+                {% set ipp_atual = imob.imoveis_por_pagina or 9 %}
+                {% for n, desc in [(6,'Grade compacta'),(9,'Equilíbrio (padrão)'),(12,'Mais imóveis'),(15,'Lista densa')] %}
+                <div class="col-6">
+                    <label class="d-block border rounded-3 text-center py-2 px-1"
+                           style="cursor:pointer; transition:.15s;
+                                  {{ 'border-color:#0d6efd !important; background:#e8f0fe;' if ipp_atual == n else '' }}">
+                        <input type="radio" name="imoveis_por_pagina" value="{{ n }}"
+                               class="d-none" {{ 'checked' if ipp_atual == n }}
+                               onchange="highlightIpp(this)">
+                        <span class="fw-bold d-block" style="font-size:1.3rem;color:{{ '#0d6efd' if ipp_atual == n else '#333' }};">{{ n }}</span>
+                        <span style="font-size:.7rem;color:#999;">{{ desc }}</span>
+                    </label>
+                </div>
+                {% endfor %}
+            </div>
+            <p class="cfg-hint mt-2">
+                <i class="bi bi-info-circle me-1"></i>
+                O layout de colunas é configurado em <a href="{{ url_for('admin.meusite', tab='layout') }}">Meu Site → Layout</a>.
+            </p>
+        </div>
+    </div>
+</div>
+
+{# ── SEÇÃO 3: ATALHO TIPOS DE IMÓVEL ── #}
+<div class="cfg-section" style="background: #f8f9ff; box-shadow: none; border: 1px solid #e8f0fe;">
+    <div class="d-flex align-items-center justify-content-between">
+        <div>
+            <div class="cfg-section-title mb-1" style="border: none; padding: 0;">
+                <i class="bi bi-tags-fill"></i> Referência Automática de Imóveis
+            </div>
+            <p class="text-muted small mb-0">
+                Configure os tipos de imóvel e os prefixos de referência automática (ex: AP001, CA002).
+                O sistema atribui as referências automaticamente na criação de novos imóveis.
+            </p>
+        </div>
+        <a href="{{ url_for('admin.listar_tipos') }}"
+           class="btn btn-outline-primary btn-sm px-3 ms-3 flex-shrink-0">
+            <i class="bi bi-arrow-right me-1"></i> Gerenciar Tipos
+        </a>
+    </div>
+</div>
+
+<div class="d-flex justify-content-end">
+    <button type="submit" class="btn btn-primary px-5 shadow-sm">
+        <i class="bi bi-check-lg me-1"></i> Salvar Configurações
+    </button>
+</div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function selOrd(label, val) {
+    document.querySelectorAll('.ordenacao-card').forEach(c => c.classList.remove('selecionado'));
+    label.classList.add('selecionado');
+    document.getElementById('ordenacao_imoveis').value = val;
+}
+
+function highlightIpp(radio) {
+    document.querySelectorAll('input[name="imoveis_por_pagina"]').forEach(r => {
+        const lbl = r.closest('label');
+        lbl.style.borderColor = '';
+        lbl.style.background  = '';
+        lbl.querySelector('span').style.color = '#333';
+    });
+    const lbl = radio.closest('label');
+    lbl.style.borderColor = '#0d6efd';
+    lbl.style.background  = '#e8f0fe';
+    lbl.querySelector('span').style.color = '#0d6efd';
+}
+</script>
+{% endblock %}

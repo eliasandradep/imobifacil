@@ -1,0 +1,373 @@
+{% extends 'admin/base.html' %}
+{% from '_macros.html' import paginacao %}
+
+{% block head %}
+<style>
+    .badge-status-Novo        { background-color: #0d6efd; }
+    .badge-status-Qualificado { background-color: #198754; }
+    .badge-status-Arquivado   { background-color: #6c757d; }
+    .badge-status-Perdido     { background-color: #dc3545; }
+
+    .badge-origem-Site        { background-color: #0dcaf0; color: #000; }
+    .badge-origem-WhatsApp    { background-color: #25d366; color: #fff; }
+    .badge-origem-Facebook    { background-color: #1877f2; color: #fff; }
+    .badge-origem-Instagram   { background: linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888); color:#fff; }
+    .badge-origem-Manual      { background-color: #6f42c1; color: #fff; }
+
+    .card-stat { border: none; border-radius: 12px; transition: transform .15s; }
+    .card-stat:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,.10); }
+
+    .table-leads td { vertical-align: middle; }
+    .btn-acao { width: 32px; height: 32px; padding: 0; display: inline-flex;
+                align-items: center; justify-content: center; border-radius: 6px; }
+
+    .search-bar { max-width: 320px; }
+    .filtros-rapidos .btn { border-radius: 20px; font-size: .8rem; }
+
+    @keyframes fadeInUp {
+        from { opacity:0; transform:translateY(10px); }
+        to   { opacity:1; transform:translateY(0); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="h3 fw-bold mb-0">Gestão de Leads</h2>
+        <small class="text-muted">Acompanhe e gerencie todos os seus contatos</small>
+    </div>
+    <a href="{{ url_for('leads.novo_lead') }}" class="btn btn-primary shadow-sm">
+        <i class="bi bi-person-plus-fill me-1"></i> Novo Lead
+    </a>
+</div>
+
+<!-- CARDS DE RESUMO -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card card-stat p-3 shadow-sm h-100" style="border-left: 4px solid #0d6efd !important;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <p class="text-muted small mb-1 text-uppercase fw-bold" style="font-size:.7rem;">Total</p>
+                    <h3 class="fw-bold mb-0">{{ totais.total }}</h3>
+                </div>
+                <i class="bi bi-people-fill fs-2 text-primary opacity-25"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card card-stat p-3 shadow-sm h-100" style="border-left: 4px solid #ffc107 !important;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <p class="text-muted small mb-1 text-uppercase fw-bold" style="font-size:.7rem;">Novos</p>
+                    <h3 class="fw-bold mb-0">{{ totais.novo }}</h3>
+                </div>
+                <i class="bi bi-person-fill-add fs-2 text-warning opacity-25"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card card-stat p-3 shadow-sm h-100" style="border-left: 4px solid #198754 !important;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <p class="text-muted small mb-1 text-uppercase fw-bold" style="font-size:.7rem;">Qualificados</p>
+                    <h3 class="fw-bold mb-0">{{ totais.qualificado }}</h3>
+                </div>
+                <i class="bi bi-patch-check-fill fs-2 text-success opacity-25"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card card-stat p-3 shadow-sm h-100" style="border-left: 4px solid #6c757d !important;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <p class="text-muted small mb-1 text-uppercase fw-bold" style="font-size:.7rem;">Arquivados</p>
+                    <h3 class="fw-bold mb-0">{{ totais.arquivado }}</h3>
+                </div>
+                <i class="bi bi-archive-fill fs-2 text-secondary opacity-25"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- FILTROS -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body p-3">
+        <form method="GET" class="row g-2 align-items-end">
+            <div class="col-12 col-md-4">
+                <label class="form-label small fw-bold mb-1">Buscar</label>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                    <input type="text" name="busca" class="form-control"
+                           placeholder="Nome, telefone ou e-mail..."
+                           value="{{ busca }}">
+                </div>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-bold mb-1">Status</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    {% for s in ['Novo','Qualificado','Arquivado','Perdido'] %}
+                    <option value="{{ s }}" {{ 'selected' if status_filtro == s }}>{{ s }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-bold mb-1">Origem</label>
+                <select name="origem" class="form-select form-select-sm">
+                    <option value="">Todas</option>
+                    {% for o in ['Site','WhatsApp','Facebook','Instagram','Manual'] %}
+                    <option value="{{ o }}" {{ 'selected' if origem_filtro == o }}>{{ o }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm px-3">
+                    <i class="bi bi-funnel me-1"></i> Filtrar
+                </button>
+                <a href="{{ url_for('leads.listar_leads') }}" class="btn btn-outline-secondary btn-sm px-3">
+                    <i class="bi bi-x-lg me-1"></i> Limpar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- TABELA -->
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        {% if leads %}
+        <div class="table-responsive">
+            <table class="table table-hover table-leads mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4" style="width:22%;">Lead</th>
+                        <th style="width:14%;">Telefone</th>
+                        <th style="width:20%;">E-mail</th>
+                        <th style="width:11%;">Origem</th>
+                        <th style="width:12%;">Data</th>
+                        <th style="width:10%;">Status</th>
+                        <th class="text-end pe-4" style="width:11%;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lead in leads %}
+                    <tr id="row-{{ lead.id }}">
+                        <!-- Nome -->
+                        <td class="ps-4">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
+                                     style="width:36px;height:36px;font-size:.85rem;
+                                            background: hsl({{ (lead.id * 47) % 360 }}, 55%, 50%);">
+                                    {{ lead.nome[0].upper() if lead.nome else '?' }}
+                                </div>
+                                <div>
+                                    <div class="fw-bold lh-sm">{{ lead.nome or '—' }}</div>
+                                    {% if lead.mensagem %}
+                                    <small class="text-muted text-truncate d-block" style="max-width:160px;"
+                                           title="{{ lead.mensagem }}">
+                                        {{ lead.mensagem }}
+                                    </small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Telefone -->
+                        <td>
+                            {% if lead.telefone %}
+                            <a href="https://wa.me/55{{ lead.telefone | replace(' ','') | replace('-','') | replace('(','') | replace(')','') }}"
+                               target="_blank" class="text-decoration-none text-dark"
+                               title="Abrir no WhatsApp">
+                                <i class="bi bi-whatsapp text-success me-1"></i>{{ lead.telefone }}
+                            </a>
+                            {% else %}—{% endif %}
+                        </td>
+
+                        <!-- E-mail -->
+                        <td>
+                            {% if lead.email %}
+                            <a href="mailto:{{ lead.email }}" class="text-decoration-none text-dark text-truncate d-block"
+                               style="max-width:180px;" title="{{ lead.email }}">
+                                <i class="bi bi-envelope me-1 text-muted"></i>{{ lead.email }}
+                            </a>
+                            {% else %}<span class="text-muted small">—</span>{% endif %}
+                        </td>
+
+                        <!-- Origem -->
+                        <td>
+                            <span class="badge rounded-pill badge-origem-{{ lead.origem }} px-2 py-1">
+                                {% if lead.origem == 'WhatsApp' %}<i class="bi bi-whatsapp me-1"></i>
+                                {% elif lead.origem == 'Facebook' %}<i class="bi bi-facebook me-1"></i>
+                                {% elif lead.origem == 'Instagram' %}<i class="bi bi-instagram me-1"></i>
+                                {% elif lead.origem == 'Site' %}<i class="bi bi-globe me-1"></i>
+                                {% else %}<i class="bi bi-person me-1"></i>{% endif %}
+                                {{ lead.origem }}
+                            </span>
+                        </td>
+
+                        <!-- Data -->
+                        <td>
+                            <span title="{{ lead.data_contato.strftime('%d/%m/%Y %H:%M') if lead.data_contato }}">
+                                {{ lead.data_contato.strftime('%d/%m/%Y') if lead.data_contato else '—' }}
+                            </span>
+                            <br>
+                            <small class="text-muted">
+                                {{ lead.data_contato.strftime('%H:%M') if lead.data_contato else '' }}
+                            </small>
+                        </td>
+
+                        <!-- Status -->
+                        <td>
+                            <span class="badge rounded-pill badge-status-{{ lead.status }} px-2 py-1"
+                                  id="badge-status-{{ lead.id }}">
+                                {{ lead.status }}
+                            </span>
+                        </td>
+
+                        <!-- Ações -->
+                        <td class="text-end pe-4">
+                            <div class="d-flex justify-content-end gap-1">
+                                <!-- Editar -->
+                                <a href="{{ url_for('leads.editar_lead', id=lead.id) }}"
+                                   class="btn btn-acao btn-outline-secondary"
+                                   title="Editar lead">
+                                    <i class="bi bi-pencil" style="font-size:.8rem;"></i>
+                                </a>
+
+                                <!-- Qualificar -->
+                                {% if lead.status != 'Qualificado' %}
+                                <form class="d-inline form-acao"
+                                      action="{{ url_for('leads.qualificar_lead', id=lead.id) }}"
+                                      method="POST"
+                                      data-lead-id="{{ lead.id }}"
+                                      data-acao="qualificar">
+                                    <button type="submit" class="btn btn-acao btn-outline-success"
+                                            title="Qualificar lead">
+                                        <i class="bi bi-patch-check" style="font-size:.8rem;"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+
+                                <!-- Arquivar -->
+                                {% if lead.status != 'Arquivado' %}
+                                <form class="d-inline form-acao"
+                                      action="{{ url_for('leads.arquivar_lead', id=lead.id) }}"
+                                      method="POST"
+                                      data-lead-id="{{ lead.id }}"
+                                      data-acao="arquivar">
+                                    <button type="submit" class="btn btn-acao btn-outline-warning"
+                                            title="Arquivar lead">
+                                        <i class="bi bi-archive" style="font-size:.8rem;"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+
+                                <!-- Excluir -->
+                                <form class="d-inline"
+                                      action="{{ url_for('leads.excluir_lead', id=lead.id) }}"
+                                      method="POST"
+                                      data-nome="{{ lead.nome | e }}"
+                                      onsubmit="return confirmarExclusao(this)">
+                                    <button type="submit" class="btn btn-acao btn-outline-danger"
+                                            title="Excluir lead">
+                                        <i class="bi bi-trash" style="font-size:.8rem;"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {{ paginacao(pagination) }}
+
+        {% else %}
+        <!-- Estado vazio -->
+        <div class="text-center py-5">
+            <i class="bi bi-person-x display-1 text-muted opacity-25"></i>
+            <h5 class="mt-3 text-muted">Nenhum lead encontrado</h5>
+            {% if status_filtro or origem_filtro or busca %}
+            <p class="text-muted small">Tente remover os filtros aplicados.</p>
+            <a href="{{ url_for('leads.listar_leads') }}" class="btn btn-outline-secondary btn-sm me-2">
+                Limpar filtros
+            </a>
+            {% else %}
+            <p class="text-muted small">Cadastre seu primeiro lead ou aguarde contatos do site e WhatsApp.</p>
+            {% endif %}
+            <a href="{{ url_for('leads.novo_lead') }}" class="btn btn-primary btn-sm">
+                <i class="bi bi-person-plus-fill me-1"></i> Cadastrar Lead
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Ações rápidas via AJAX (sem recarregar a página)
+document.querySelectorAll('.form-acao').forEach(form => {
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const leadId = this.dataset.leadId;
+        const acao   = this.dataset.acao;
+        const url    = this.action;
+
+        fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                // Atualiza o badge na linha sem recarregar
+                const badge = document.getElementById(`badge-status-${leadId}`);
+                if (badge) {
+                    badge.className = `badge rounded-pill badge-status-${data.status} px-2 py-1`;
+                    badge.textContent = data.status;
+                }
+                // Remove o botão da ação que acabou de ser executada
+                this.remove();
+
+                // Mostra toast de feedback
+                mostrarToast(
+                    acao === 'qualificar'
+                        ? 'Lead qualificado com sucesso!'
+                        : 'Lead arquivado.',
+                    acao === 'qualificar' ? 'success' : 'warning'
+                );
+            }
+        })
+        .catch(() => {
+            // Fallback: submete normalmente se o AJAX falhar
+            form.submit();
+        });
+    });
+});
+
+function confirmarExclusao(form) {
+    const nome = form.dataset.nome;
+    return confirm(`Excluir o lead '${nome}'? Esta ação não pode ser desfeita.`);
+}
+
+// Toast leve (sem depender de Bootstrap Toast)
+function mostrarToast(msg, tipo) {
+    const cores = { success: '#198754', warning: '#856404', danger: '#dc3545' };
+    const div = document.createElement('div');
+    div.style.cssText = `
+        position:fixed; bottom:1.5rem; right:1.5rem; z-index:9999;
+        background:${cores[tipo] || '#333'}; color:#fff;
+        padding:.75rem 1.25rem; border-radius:8px;
+        box-shadow:0 4px 12px rgba(0,0,0,.2);
+        font-size:.9rem; animation: fadeInUp .3s ease;
+    `;
+    div.textContent = msg;
+    document.body.appendChild(div);
+    setTimeout(() => div.remove(), 3000);
+}
+</script>
+{% endblock %}
