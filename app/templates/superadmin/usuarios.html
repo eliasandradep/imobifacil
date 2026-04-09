@@ -1,0 +1,147 @@
+{% extends 'superadmin/base.html' %}
+
+{% block page_title %}Usuários — {{ imob.nome }}{% endblock %}
+
+{% block head %}
+<style>
+    .form-card { background: #fff; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,.06); padding: 1.75rem 2rem; margin-bottom: 1.25rem; }
+    .section-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #a855f7; border-bottom: 2px solid #f3e8ff; padding-bottom: .5rem; margin-bottom: 1.25rem; }
+    .user-table th { font-size: .72rem; text-transform: uppercase; letter-spacing: .8px; color: #888; font-weight: 700; }
+    .user-table td { vertical-align: middle; font-size: .88rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-4">
+    <a href="{{ url_for('superadmin.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+        <h2 class="h3 fw-bold mb-0">Usuários</h2>
+        <small class="text-muted">{{ imob.nome }} — {{ imob.dominio }}</small>
+    </div>
+</div>
+
+<div class="row g-4">
+    {# ── Lista de usuários ── #}
+    <div class="col-lg-8">
+        <div class="form-card p-0">
+            <div class="px-4 py-3 border-bottom">
+                <h6 class="fw-bold mb-0"><i class="bi bi-people me-2 text-primary"></i>Usuários desta imobiliária</h6>
+            </div>
+            <table class="table user-table mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Nome</th>
+                        <th>E-mail</th>
+                        <th class="text-end pe-4">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for u in usuarios %}
+                <tr>
+                    <td class="ps-4 fw-semibold">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold"
+                                 style="width:28px;height:28px;font-size:.7rem;flex-shrink:0;">
+                                {{ u.nome[0].upper() }}
+                            </div>
+                            {{ u.nome }}
+                        </div>
+                    </td>
+                    <td class="text-muted">{{ u.email }}</td>
+                    <td class="text-end pe-4">
+                        <div class="d-flex gap-1 justify-content-end">
+                            {# Reset de senha via modal #}
+                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                    title="Redefinir senha"
+                                    onclick="abrirResetSenha({{ u.id }}, '{{ u.nome | e }}')">
+                                <i class="bi bi-key"></i>
+                            </button>
+                            {% if usuarios | length > 1 %}
+                            <form method="POST"
+                                  action="{{ url_for('superadmin.excluir_usuario_imobiliaria', imob_id=imob.id, user_id=u.id) }}"
+                                  onsubmit="return confirm('Excluir o usuário \'{{ u.nome | e }}\'?')">
+                                <button type="submit" class="btn btn-outline-danger btn-sm" title="Excluir">
+                                    <i class="bi bi-trash3"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3" class="text-center py-4 text-muted">Nenhum usuário.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {# ── Novo usuário ── #}
+    <div class="col-lg-4">
+        <div class="form-card">
+            <div class="section-label"><i class="bi bi-person-plus me-1"></i> Novo Usuário</div>
+            <form method="POST" action="{{ url_for('superadmin.novo_usuario_imobiliaria', id=imob.id) }}">
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Nome</label>
+                    <input type="text" name="nome" class="form-control form-control-sm"
+                           placeholder="Nome completo" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">E-mail</label>
+                    <input type="email" name="email" class="form-control form-control-sm"
+                           placeholder="usuario@imobiliaria.com" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Senha</label>
+                    <input type="password" name="senha" class="form-control form-control-sm"
+                           placeholder="Mínimo 6 caracteres" minlength="6" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm w-100"
+                        style="background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;">
+                    <i class="bi bi-plus-lg me-1"></i> Adicionar Usuário
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# Modal reset senha #}
+<div class="modal fade" id="modalResetSenha" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title fw-bold">Redefinir Senha</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formResetSenha" method="POST">
+                <div class="modal-body">
+                    <p class="text-muted small mb-3" id="resetNomeTexto"></p>
+                    <label class="form-label fw-bold small">Nova senha</label>
+                    <input type="password" name="nova_senha" class="form-control form-control-sm"
+                           placeholder="Mínimo 6 caracteres" minlength="6" required>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary btn-sm px-3"
+                            style="background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;">
+                        Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function abrirResetSenha(userId, nome) {
+    document.getElementById('resetNomeTexto').textContent = `Redefinir senha de "${nome}"`;
+    document.getElementById('formResetSenha').action =
+        `/superadmin/imobiliarias/{{ imob.id }}/usuarios/${userId}/reset-senha`;
+    new bootstrap.Modal(document.getElementById('modalResetSenha')).show();
+}
+</script>
+{% endblock %}

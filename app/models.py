@@ -10,6 +10,12 @@ class Imobiliaria(db.Model):
     nome       = db.Column(db.String(100), nullable=False)
     dominio    = db.Column(db.String(100), unique=True, nullable=False)
     api_token  = db.Column(db.String(100), unique=True, nullable=False)
+    ativo                 = db.Column(db.Boolean, default=True)
+    plano                 = db.Column(db.String(30),  default='basico')
+    criado_em             = db.Column(db.DateTime,    default=datetime.utcnow)
+    # Domínios
+    slug                  = db.Column(db.String(80),  unique=True)   # ex: "imob-master" → imob-master.imobifacil.com
+    dominio_personalizado = db.Column(db.String(255))                # ex: "www.imobiliaria.com.br"
     tema_ativo     = db.Column(db.String(50),  default='clean')
     logo_url       = db.Column(db.String(255))
     whatsapp       = db.Column(db.String(20))
@@ -31,6 +37,10 @@ class Imobiliaria(db.Model):
     leads        = db.relationship('Lead',       backref='imobiliaria', lazy=True)
     banners      = db.relationship('BannerSite', backref='imobiliaria', lazy=True,
                                    order_by='BannerSite.ordem')
+    paginas      = db.relationship('PaginaSite', backref='imobiliaria', lazy=True,
+                                   order_by='PaginaSite.ordem')
+    menu_links   = db.relationship('MenuLink',   backref='imobiliaria', lazy=True,
+                                   order_by='MenuLink.ordem')
 
 
 class TipoImovel(db.Model):
@@ -133,6 +143,30 @@ class Lead(db.Model):
     data_contato = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class SuperAdmin(db.Model, UserMixin):
+    """Usuário da plataforma ImobiFácil — gerencia todas as imobiliárias."""
+    __tablename__ = 'superadmins'
+    id         = db.Column(db.Integer, primary_key=True)
+    nome       = db.Column(db.String(100), nullable=False)
+    email      = db.Column(db.String(120), unique=True, nullable=False)
+    senha_hash = db.Column(db.String(256))
+    criado_em  = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def get_id(self):
+        # Prefixo 'sa:' para distinguir do user_loader de Usuario
+        return f"sa:{self.id}"
+
+    def set_senha(self, senha):
+        self.senha_hash = generate_password_hash(senha)
+
+    def check_senha(self, senha):
+        return check_password_hash(self.senha_hash, senha)
+
+    @property
+    def is_superadmin(self):
+        return True
+
+
 class BannerSite(db.Model):
     __tablename__ = 'banners_site'
     id             = db.Column(db.Integer, primary_key=True)
@@ -141,3 +175,29 @@ class BannerSite(db.Model):
     titulo         = db.Column(db.String(100))
     subtitulo      = db.Column(db.String(200))
     ordem          = db.Column(db.Integer, default=0)
+
+
+class PaginaSite(db.Model):
+    """Páginas do site público (institucionais pré-definidas + páginas extras criadas pelo usuário)."""
+    __tablename__ = 'paginas_site'
+    id             = db.Column(db.Integer, primary_key=True)
+    imobiliaria_id = db.Column(db.Integer, db.ForeignKey('imobiliarias.id'), nullable=False)
+    tipo           = db.Column(db.String(20), default='custom')   # 'institucional' | 'custom'
+    slug           = db.Column(db.String(100), nullable=False)
+    titulo         = db.Column(db.String(200), nullable=False)
+    conteudo       = db.Column(db.Text)
+    ativo          = db.Column(db.Boolean, default=True)
+    no_menu        = db.Column(db.Boolean, default=False)
+    ordem          = db.Column(db.Integer, default=0)
+
+
+class MenuLink(db.Model):
+    """Links exibidos no menu de navegação do site público."""
+    __tablename__ = 'menu_links'
+    id             = db.Column(db.Integer, primary_key=True)
+    imobiliaria_id = db.Column(db.Integer, db.ForeignKey('imobiliarias.id'), nullable=False)
+    label          = db.Column(db.String(100), nullable=False)
+    url            = db.Column(db.String(255), nullable=False)
+    ordem          = db.Column(db.Integer, default=0)
+    ativo          = db.Column(db.Boolean, default=True)
+    abre_nova_aba  = db.Column(db.Boolean, default=False)

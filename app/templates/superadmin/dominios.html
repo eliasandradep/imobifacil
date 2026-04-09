@@ -1,0 +1,207 @@
+{% extends 'superadmin/base.html' %}
+
+{% block page_title %}Domínios — {{ imob.nome }}{% endblock %}
+
+{% block head %}
+<style>
+    .form-card { background: #fff; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,.06); padding: 1.75rem 2rem; margin-bottom: 1.25rem; }
+    .section-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #a855f7; border-bottom: 2px solid #f3e8ff; padding-bottom: .5rem; margin-bottom: 1.25rem; }
+    .domain-badge { font-family: monospace; background: #f0f4ff; color: #3b5998; border-radius: 8px; padding: .35rem .85rem; font-size: .85rem; display: inline-block; }
+    .dns-step { background: #f8f9ff; border: 1px solid #e8f0fe; border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: .75rem; }
+    .dns-step .step-num { width: 26px; height: 26px; background: #a855f7; color: #fff; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 700; flex-shrink: 0; }
+    code { background: #1a0533; color: #e9d5ff; padding: .2rem .55rem; border-radius: 5px; font-size: .82rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-4">
+    <a href="{{ url_for('superadmin.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+        <h2 class="h3 fw-bold mb-0">Configurar Domínios</h2>
+        <small class="text-muted">{{ imob.nome }}</small>
+    </div>
+</div>
+
+<div class="row g-4">
+
+    {# ── Formulário ── #}
+    <div class="col-lg-7">
+        <form method="POST">
+
+        {# Subdomínio da plataforma #}
+        <div class="form-card mb-3">
+            <div class="section-label"><i class="bi bi-link-45deg me-1"></i> Subdomínio da Plataforma</div>
+            {% if base_domain %}
+            <div class="mb-3">
+                <label class="form-label fw-bold small">Slug</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light text-muted" style="font-size:.82rem;">http://</span>
+                    <input type="text" name="slug" id="slug" class="form-control"
+                           value="{{ imob.slug or '' }}"
+                           placeholder="ex: minha-imob"
+                           pattern="[a-z0-9-]*"
+                           title="Apenas letras minúsculas, números e hífens">
+                    <span class="input-group-text bg-light text-muted" style="font-size:.82rem;">.{{ base_domain }}</span>
+                </div>
+                <div class="text-muted small mt-1">
+                    {% if imob.slug %}
+                    URL atual:
+                    <a href="http://{{ imob.slug }}.{{ base_domain }}" target="_blank" class="text-decoration-none">
+                        <code>{{ imob.slug }}.{{ base_domain }}</code>
+                    </a>
+                    {% else %}
+                    Nenhum subdomínio configurado.
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <div class="text-muted small">
+                <i class="bi bi-exclamation-circle me-1 text-warning"></i>
+                <code>BASE_DOMAIN</code> não configurado no <code>.env</code>.
+                Defina <code>BASE_DOMAIN=seudominio.com</code> para habilitar subdomínios automáticos.
+            </div>
+            {% endif %}
+        </div>
+
+        {# Domínio personalizado #}
+        <div class="form-card mb-4">
+            <div class="section-label"><i class="bi bi-globe me-1"></i> Domínio Personalizado</div>
+            <div class="mb-2">
+                <label class="form-label fw-bold small">Domínio <span class="text-muted fw-normal">(sem http://)</span></label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light text-muted" style="font-size:.82rem;">http://</span>
+                    <input type="text" name="dominio_personalizado" class="form-control"
+                           value="{{ imob.dominio_personalizado or '' }}"
+                           placeholder="ex: www.imobiliaria.com.br">
+                </div>
+                {% if imob.dominio_personalizado %}
+                <div class="text-muted small mt-1">
+                    URL ativa:
+                    <a href="http://{{ imob.dominio_personalizado }}" target="_blank" class="text-decoration-none">
+                        <code>{{ imob.dominio_personalizado }}</code>
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            <p class="text-muted small mb-0">
+                <i class="bi bi-info-circle me-1 text-primary"></i>
+                O domínio personalizado tem <strong>prioridade</strong> sobre o subdomínio da plataforma.
+                Veja as instruções de DNS ao lado.
+            </p>
+        </div>
+
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('superadmin.dashboard') }}" class="btn btn-outline-secondary px-4">Cancelar</a>
+            <button type="submit" class="btn btn-primary px-5 shadow-sm"
+                    style="background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;">
+                <i class="bi bi-check-lg me-1"></i> Salvar Domínios
+            </button>
+        </div>
+
+        </form>
+    </div>
+
+    {# ── Instruções DNS ── #}
+    <div class="col-lg-5">
+        <div class="form-card">
+            <div class="section-label"><i class="bi bi-diagram-3 me-1"></i> Como Configurar o DNS</div>
+
+            <p class="text-muted small mb-3">
+                Para que um domínio personalizado funcione, o DNS do domínio precisa apontar para o IP do servidor desta plataforma.
+            </p>
+
+            <div class="dns-step d-flex gap-3 align-items-start">
+                <span class="step-num">1</span>
+                <div>
+                    <div class="fw-bold small">Acesse o painel do registrador de domínio</div>
+                    <div class="text-muted" style="font-size:.78rem;">
+                        Ex: Registro.br, GoDaddy, Cloudflare, HostGator etc.
+                    </div>
+                </div>
+            </div>
+
+            <div class="dns-step d-flex gap-3 align-items-start">
+                <span class="step-num">2</span>
+                <div>
+                    <div class="fw-bold small">Crie um registro do tipo A</div>
+                    <div class="text-muted" style="font-size:.78rem;">
+                        Aponte <code>@</code> ou <code>www</code> para o IP do servidor:
+                        <br><code>Tipo: A — Valor: IP_DO_SERVIDOR</code>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dns-step d-flex gap-3 align-items-start">
+                <span class="step-num">3</span>
+                <div>
+                    <div class="fw-bold small">Aguarde a propagação</div>
+                    <div class="text-muted" style="font-size:.78rem;">
+                        DNS pode levar de 5 minutos a 48 horas para propagar globalmente.
+                    </div>
+                </div>
+            </div>
+
+            <div class="dns-step d-flex gap-3 align-items-start">
+                <span class="step-num">4</span>
+                <div>
+                    <div class="fw-bold small">Registre o domínio aqui</div>
+                    <div class="text-muted" style="font-size:.78rem;">
+                        Salve o domínio no campo acima. A plataforma roteará automaticamente.
+                    </div>
+                </div>
+            </div>
+
+            {% if base_domain %}
+            <hr class="opacity-25 my-3">
+            <p class="text-muted small mb-2"><i class="bi bi-info-circle me-1 text-primary"></i>
+                Para subdomínios <code>*.{{ base_domain }}</code>, configure um registro <strong>wildcard</strong> no DNS da plataforma:
+            </p>
+            <div class="dns-step">
+                <code style="font-size:.78rem;">Tipo: A — Nome: * — Valor: IP_DO_SERVIDOR</code>
+            </div>
+            {% endif %}
+        </div>
+
+        {# Resumo do estado atual #}
+        <div class="form-card" style="background:#f8f9ff;box-shadow:none;border:1px solid #e8f0fe;">
+            <div class="section-label"><i class="bi bi-check2-circle me-1"></i> Estado Atual</div>
+            <table class="table table-sm table-borderless mb-0" style="font-size:.82rem;">
+                <tr>
+                    <td class="text-muted fw-bold" style="width:40%;">Slug</td>
+                    <td>{{ imob.slug or '—' }}</td>
+                </tr>
+                {% if base_domain and imob.slug %}
+                <tr>
+                    <td class="text-muted fw-bold">Subdomínio</td>
+                    <td>
+                        <a href="http://{{ imob.slug }}.{{ base_domain }}" target="_blank" class="text-decoration-none" style="font-size:.78rem;">
+                            {{ imob.slug }}.{{ base_domain }}
+                        </a>
+                    </td>
+                </tr>
+                {% endif %}
+                <tr>
+                    <td class="text-muted fw-bold">Dom. Personalizado</td>
+                    <td>{{ imob.dominio_personalizado or '—' }}</td>
+                </tr>
+                <tr>
+                    <td class="text-muted fw-bold">Legado (dominio)</td>
+                    <td>{{ imob.dominio }}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Auto-formata o slug enquanto digita
+document.getElementById('slug').addEventListener('input', function() {
+    this.value = this.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
+});
+</script>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends 'site/base.html' %}
+
+{% block title %}{{ pagina.titulo }}{% endblock %}
+
+{% block head %}
+<style>
+    .pagina-hero {
+        background: linear-gradient(135deg, var(--hero-from), var(--hero-to));
+        color: #fff;
+        padding: 48px 0 36px;
+    }
+    .pagina-body {
+        max-width: 820px;
+        margin: 0 auto;
+        padding: 2.5rem 1rem 3rem;
+        font-size: 1rem;
+        line-height: 1.75;
+        color: #333;
+    }
+    .pagina-body h1, .pagina-body h2, .pagina-body h3 {
+        color: var(--prim);
+        margin-top: 1.75rem;
+        margin-bottom: .75rem;
+    }
+    .pagina-body a        { color: var(--prim); }
+    .pagina-body a:hover  { color: var(--prim-dark); }
+    .pagina-body ul, .pagina-body ol { padding-left: 1.5rem; margin-bottom: 1rem; }
+    .pagina-body blockquote {
+        border-left: 4px solid var(--prim);
+        padding: .5rem 1rem;
+        background: #f8f9fa;
+        border-radius: 0 8px 8px 0;
+        color: #555;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="pagina-hero">
+    <div class="container">
+        <h1 class="h2 fw-bold mb-1">{{ pagina.titulo }}</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0" style="font-size:.82rem;opacity:.75;">
+                <li class="breadcrumb-item"><a href="{{ url_for('site.index') }}" class="text-white">Início</a></li>
+                <li class="breadcrumb-item active text-white">{{ pagina.titulo }}</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="container">
+    <div class="pagina-body">
+        {% if pagina.conteudo %}
+            {{ pagina.conteudo | safe }}
+        {% else %}
+            <p class="text-muted text-center py-5">Esta página ainda não possui conteúdo.</p>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

@@ -156,6 +156,16 @@
             <i class="bi bi-palette"></i> Meu Site
         </a>
 
+        <a href="{{ url_for('admin.paginas') }}"
+           class="nav-link-side {% if request.endpoint in ['admin.paginas','admin.editar_pagina_institucional','admin.editar_pagina_extra','admin.nova_pagina_extra','admin.excluir_pagina_extra','admin.novo_menu_link','admin.excluir_menu_link','admin.toggle_menu_link'] %}active{% endif %}">
+            <i class="bi bi-file-earmark-text"></i> Páginas
+        </a>
+
+        <a href="{{ url_for('admin.configuracoes') }}"
+           class="nav-link-side {% if request.endpoint == 'admin.configuracoes' %}active{% endif %}">
+            <i class="bi bi-gear-fill"></i> Configurações
+        </a>
+
         <a href="{{ url_for('site.index') }}" target="_blank"
            class="nav-link-side">
             <i class="bi bi-box-arrow-up-right"></i> Ver Site

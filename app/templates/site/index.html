@@ -143,7 +143,9 @@
             <h1 class="fw-bold {{ 'display-5' if lb == 'fullscreen' else 'h2' }} mb-2">
                 {{ g.imobiliaria.nome }}
             </h1>
-            <p class="opacity-90 mb-0">Encontre o imóvel ideal para você</p>
+            <p class="opacity-90 mb-0">
+                {{ g.imobiliaria.slogan or 'Encontre o imóvel ideal para você' }}
+            </p>
         </div>
     </div>
     {% endif %}

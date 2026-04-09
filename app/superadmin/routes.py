@@ -1,0 +1,324 @@
+import uuid, re
+from functools import wraps
+from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app
+from flask_login import login_user, logout_user, current_user
+from ..models import SuperAdmin, Imobiliaria, Usuario, db
+
+superadmin_bp = Blueprint('superadmin', __name__)
+
+PLANOS = ['basico', 'profissional', 'enterprise']
+
+
+def _gerar_slug(nome, excluir_id=None):
+    """Gera slug único a partir do nome da imobiliária (sem acentos)."""
+    import unicodedata
+    normalizado = unicodedata.normalize('NFD', nome)
+    sem_acentos = ''.join(c for c in normalizado if unicodedata.category(c) != 'Mn')
+    base = re.sub(r'[^a-z0-9]+', '-', sem_acentos.lower()).strip('-') or 'imob'
+    slug = base
+    contador = 1
+    while True:
+        q = Imobiliaria.query.filter_by(slug=slug)
+        if excluir_id:
+            q = q.filter(Imobiliaria.id != excluir_id)
+        if not q.first():
+            break
+        slug = f"{base}-{contador}"
+        contador += 1
+    return slug
+
+
+def _url_subdominio(slug):
+    base = current_app.config.get('BASE_DOMAIN', '').strip()
+    if base and slug:
+        return f"http://{slug}.{base}"
+    return None
+
+
+def superadmin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not current_user.is_authenticated or not getattr(current_user, 'is_superadmin', False):
+            return redirect(url_for('superadmin.login'))
+        return f(*args, **kwargs)
+    return decorated
+
+
+# ── LOGIN / LOGOUT ────────────────────────────────────────────────────────────
+
+@superadmin_bp.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated and getattr(current_user, 'is_superadmin', False):
+        return redirect(url_for('superadmin.dashboard'))
+
+    if request.method == 'POST':
+        sa = SuperAdmin.query.filter_by(email=request.form.get('email')).first()
+        if sa and sa.check_senha(request.form.get('senha')):
+            login_user(sa)
+            return redirect(url_for('superadmin.dashboard'))
+        flash('E-mail ou senha incorretos.', 'danger')
+
+    return render_template('superadmin/login.html')
+
+
+@superadmin_bp.route('/logout')
+def logout():
+    logout_user()
+    return redirect(url_for('superadmin.login'))
+
+
+# ── DASHBOARD ─────────────────────────────────────────────────────────────────
+
+@superadmin_bp.route('/')
+@superadmin_required
+def dashboard():
+    from ..models import Lead, Imovel
+    total_imobs   = Imobiliaria.query.count()
+    imobs_ativas  = Imobiliaria.query.filter_by(ativo=True).count()
+    imobs_inativas= Imobiliaria.query.filter_by(ativo=False).count()
+    total_imoveis = Imovel.query.count()
+    total_leads   = Lead.query.count()
+
+    imobiliarias = Imobiliaria.query.order_by(Imobiliaria.criado_em.desc()).all()
+
+    # Stats por imobiliária
+    stats = {}
+    for imob in imobiliarias:
+        stats[imob.id] = {
+            'imoveis': Imovel.query.filter_by(imobiliaria_id=imob.id).count(),
+            'leads':   Lead.query.filter_by(imobiliaria_id=imob.id).count(),
+            'usuarios':Usuario.query.filter_by(imobiliaria_id=imob.id).count(),
+        }
+
+    base_domain = current_app.config.get('BASE_DOMAIN', '')
+
+    return render_template('superadmin/dashboard.html',
+                           total_imobs=total_imobs,
+                           imobs_ativas=imobs_ativas,
+                           imobs_inativas=imobs_inativas,
+                           total_imoveis=total_imoveis,
+                           total_leads=total_leads,
+                           imobiliarias=imobiliarias,
+                           stats=stats,
+                           base_domain=base_domain)
+
+
+# ── CRIAR NOVA IMOBILIÁRIA ────────────────────────────────────────────────────
+
+@superadmin_bp.route('/imobiliarias/nova', methods=['GET', 'POST'])
+@superadmin_required
+def nova_imobiliaria():
+    if request.method == 'POST':
+        nome      = request.form.get('nome', '').strip()
+        dominio   = request.form.get('dominio', '').strip().lower()
+        plano     = request.form.get('plano', 'basico')
+        adm_nome  = request.form.get('adm_nome', '').strip()
+        adm_email = request.form.get('adm_email', '').strip().lower()
+        adm_senha = request.form.get('adm_senha', '').strip()
+
+        erros = []
+        if not nome:           erros.append('Informe o nome da imobiliária.')
+        if not adm_nome:       erros.append('Informe o nome do administrador.')
+        if not adm_email:      erros.append('Informe o e-mail do administrador.')
+        if len(adm_senha) < 6: erros.append('A senha deve ter ao menos 6 caracteres.')
+        if Usuario.query.filter_by(email=adm_email).first():
+            erros.append(f'O e-mail "{adm_email}" já está cadastrado.')
+
+        # Gera slug a partir do campo ou do nome
+        slug_val = request.form.get('slug', '').strip().lower() or _gerar_slug(nome)
+        slug_val = re.sub(r'[^a-z0-9-]+', '-', slug_val).strip('-') or _gerar_slug(nome)
+        if Imobiliaria.query.filter_by(slug=slug_val).first():
+            erros.append(f'O slug "{slug_val}" já está em uso.')
+
+        dominio_personalizado = request.form.get('dominio_personalizado', '').strip().lower() or None
+
+        if erros:
+            for e in erros:
+                flash(e, 'danger')
+            return render_template('superadmin/form_imobiliaria.html',
+                                   planos=PLANOS, form=request.form, editando=False,
+                                   base_domain=current_app.config.get('BASE_DOMAIN', ''))
+
+        # Campo legado 'dominio': usa dominio_personalizado ou slug (garante unicidade)
+        dominio_legado = dominio_personalizado or slug_val
+
+        imob = Imobiliaria(
+            nome=nome,
+            dominio=dominio_legado,
+            slug=slug_val,
+            dominio_personalizado=dominio_personalizado,
+            api_token=str(uuid.uuid4()).replace('-', ''),
+            plano=plano,
+            ativo=True,
+        )
+        db.session.add(imob)
+        db.session.flush()  # obtém imob.id
+
+        usuario = Usuario(
+            imobiliaria_id=imob.id,
+            nome=adm_nome,
+            email=adm_email,
+        )
+        usuario.set_senha(adm_senha)
+        db.session.add(usuario)
+        db.session.commit()
+
+        flash(f'Imobiliária "{nome}" criada com sucesso!', 'success')
+        return redirect(url_for('superadmin.dashboard'))
+
+    return render_template('superadmin/form_imobiliaria.html',
+                           planos=PLANOS, form={}, editando=False,
+                           base_domain=current_app.config.get('BASE_DOMAIN',''))
+
+
+# ── EDITAR IMOBILIÁRIA ────────────────────────────────────────────────────────
+
+@superadmin_bp.route('/imobiliarias/<int:id>/editar', methods=['GET', 'POST'])
+@superadmin_required
+def editar_imobiliaria(id):
+    imob = Imobiliaria.query.get_or_404(id)
+
+    if request.method == 'POST':
+        novo_dominio = request.form.get('dominio', '').strip().lower()
+        conflito = Imobiliaria.query.filter(
+            Imobiliaria.dominio == novo_dominio,
+            Imobiliaria.id != id
+        ).first()
+        if conflito:
+            flash(f'O domínio "{novo_dominio}" já está em uso por outra imobiliária.', 'danger')
+            return render_template('superadmin/form_imobiliaria.html',
+                                   planos=PLANOS, form=request.form,
+                                   imob=imob, editando=True)
+
+        novo_slug = request.form.get('slug', '').strip().lower()
+        novo_slug = re.sub(r'[^a-z0-9-]+', '-', novo_slug).strip('-') or _gerar_slug(imob.nome, excluir_id=id)
+        conflito_slug = Imobiliaria.query.filter(
+            Imobiliaria.slug == novo_slug, Imobiliaria.id != id
+        ).first()
+        if conflito_slug:
+            flash(f'O slug "{novo_slug}" já está em uso.', 'danger')
+            return render_template('superadmin/form_imobiliaria.html',
+                                   planos=PLANOS, form=request.form, imob=imob, editando=True,
+                                   base_domain=current_app.config.get('BASE_DOMAIN',''))
+
+        imob.nome                 = request.form.get('nome', '').strip()
+        imob.dominio              = novo_dominio
+        imob.slug                 = novo_slug
+        imob.dominio_personalizado= request.form.get('dominio_personalizado','').strip().lower() or None
+        imob.plano                = request.form.get('plano', 'basico')
+        db.session.commit()
+        flash('Imobiliária atualizada!', 'success')
+        return redirect(url_for('superadmin.dashboard'))
+
+    return render_template('superadmin/form_imobiliaria.html',
+                           planos=PLANOS, form=imob, imob=imob, editando=True,
+                           base_domain=current_app.config.get('BASE_DOMAIN',''))
+
+
+# ── TOGGLE ATIVO/INATIVO ──────────────────────────────────────────────────────
+
+@superadmin_bp.route('/imobiliarias/<int:id>/toggle', methods=['POST'])
+@superadmin_required
+def toggle_imobiliaria(id):
+    imob = Imobiliaria.query.get_or_404(id)
+    imob.ativo = not imob.ativo
+    db.session.commit()
+    estado = 'ativada' if imob.ativo else 'desativada'
+    flash(f'Imobiliária "{imob.nome}" {estado}.', 'success')
+    return redirect(url_for('superadmin.dashboard'))
+
+
+# ── GERENCIAR DOMÍNIOS DA IMOBILIÁRIA ────────────────────────────────────────
+
+@superadmin_bp.route('/imobiliarias/<int:id>/dominios', methods=['GET', 'POST'])
+@superadmin_required
+def dominios_imobiliaria(id):
+    imob = Imobiliaria.query.get_or_404(id)
+    base_domain = current_app.config.get('BASE_DOMAIN', '')
+
+    if request.method == 'POST':
+        novo_slug = request.form.get('slug', '').strip().lower()
+        novo_slug = re.sub(r'[^a-z0-9-]+', '-', novo_slug).strip('-')
+        dominio_personalizado = request.form.get('dominio_personalizado', '').strip().lower() or None
+
+        if novo_slug:
+            conflito = Imobiliaria.query.filter(
+                Imobiliaria.slug == novo_slug, Imobiliaria.id != id
+            ).first()
+            if conflito:
+                flash(f'O slug "{novo_slug}" já está em uso por outra imobiliária.', 'danger')
+                return render_template('superadmin/dominios.html', imob=imob, base_domain=base_domain)
+
+        imob.slug                  = novo_slug or None
+        imob.dominio_personalizado = dominio_personalizado
+        db.session.commit()
+        flash('Domínios atualizados com sucesso!', 'success')
+        return redirect(url_for('superadmin.dominios_imobiliaria', id=id))
+
+    return render_template('superadmin/dominios.html', imob=imob, base_domain=base_domain)
+
+
+# ── GERENCIAR USUÁRIOS DA IMOBILIÁRIA ─────────────────────────────────────────
+
+@superadmin_bp.route('/imobiliarias/<int:id>/usuarios')
+@superadmin_required
+def usuarios_imobiliaria(id):
+    imob     = Imobiliaria.query.get_or_404(id)
+    usuarios = Usuario.query.filter_by(imobiliaria_id=id).all()
+    return render_template('superadmin/usuarios.html', imob=imob, usuarios=usuarios)
+
+
+@superadmin_bp.route('/imobiliarias/<int:id>/usuarios/novo', methods=['POST'])
+@superadmin_required
+def novo_usuario_imobiliaria(id):
+    imob  = Imobiliaria.query.get_or_404(id)
+    nome  = request.form.get('nome', '').strip()
+    email = request.form.get('email', '').strip().lower()
+    senha = request.form.get('senha', '').strip()
+
+    if not nome or not email or len(senha) < 6:
+        flash('Preencha nome, e-mail e senha (mínimo 6 caracteres).', 'danger')
+        return redirect(url_for('superadmin.usuarios_imobiliaria', id=id))
+
+    if Usuario.query.filter_by(email=email).first():
+        flash(f'E-mail "{email}" já cadastrado.', 'danger')
+        return redirect(url_for('superadmin.usuarios_imobiliaria', id=id))
+
+    u = Usuario(imobiliaria_id=id, nome=nome, email=email)
+    u.set_senha(senha)
+    db.session.add(u)
+    db.session.commit()
+    flash(f'Usuário "{nome}" criado com sucesso!', 'success')
+    return redirect(url_for('superadmin.usuarios_imobiliaria', id=id))
+
+
+@superadmin_bp.route('/imobiliarias/<int:imob_id>/usuarios/<int:user_id>/excluir', methods=['POST'])
+@superadmin_required
+def excluir_usuario_imobiliaria(imob_id, user_id):
+    usuario = Usuario.query.filter_by(id=user_id, imobiliaria_id=imob_id).first_or_404()
+    # Não permite excluir o último usuário
+    total = Usuario.query.filter_by(imobiliaria_id=imob_id).count()
+    if total <= 1:
+        flash('Não é possível excluir o único usuário desta imobiliária.', 'danger')
+        return redirect(url_for('superadmin.usuarios_imobiliaria', id=imob_id))
+    nome = usuario.nome
+    db.session.delete(usuario)
+    db.session.commit()
+    flash(f'Usuário "{nome}" excluído.', 'success')
+    return redirect(url_for('superadmin.usuarios_imobiliaria', id=imob_id))
+
+
+# ── RESET DE SENHA DE USUÁRIO ─────────────────────────────────────────────────
+
+@superadmin_bp.route('/imobiliarias/<int:imob_id>/usuarios/<int:user_id>/reset-senha', methods=['POST'])
+@superadmin_required
+def reset_senha_usuario(imob_id, user_id):
+    usuario = Usuario.query.filter_by(id=user_id, imobiliaria_id=imob_id).first_or_404()
+    nova    = request.form.get('nova_senha', '').strip()
+    if len(nova) < 6:
+        flash('A nova senha deve ter ao menos 6 caracteres.', 'danger')
+        return redirect(url_for('superadmin.usuarios_imobiliaria', id=imob_id))
+    usuario.set_senha(nova)
+    db.session.commit()
+    flash(f'Senha de "{usuario.nome}" redefinida.', 'success')
+    return redirect(url_for('superadmin.usuarios_imobiliaria', id=imob_id))

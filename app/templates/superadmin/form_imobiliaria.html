@@ -1,0 +1,151 @@
+{% extends 'superadmin/base.html' %}
+
+{% block page_title %}{{ 'Editar' if editando else 'Nova' }} Imobiliária{% endblock %}
+
+{% block head %}
+<style>
+    .form-card { background: #fff; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,.06); padding: 1.75rem 2rem; margin-bottom: 1.25rem; }
+    .section-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #a855f7; border-bottom: 2px solid #f3e8ff; padding-bottom: .5rem; margin-bottom: 1.25rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-4">
+    <a href="{{ url_for('superadmin.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+        <h2 class="h3 fw-bold mb-0">{{ 'Editar Imobiliária' if editando else 'Nova Imobiliária' }}</h2>
+        <small class="text-muted">{{ imob.nome if editando else 'Preencha os dados para criar uma nova conta' }}</small>
+    </div>
+</div>
+
+<form method="POST">
+<div class="row g-4">
+
+    {# ── Dados da imobiliária ── #}
+    <div class="col-lg-7">
+        <div class="form-card">
+            <div class="section-label"><i class="bi bi-building me-1"></i> Dados da Imobiliária</div>
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label fw-bold small">Nome da Imobiliária</label>
+                    <input type="text" name="nome" class="form-control"
+                           placeholder="ex: Imobiliária Exemplo"
+                           value="{{ form.nome if form.nome is string else (form.get('nome','') if form.get is defined else '') }}"
+                           required>
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-bold small">
+                        Slug <span class="text-muted fw-normal">(subdomínio automático)</span>
+                    </label>
+                    <div class="input-group">
+                        {% if base_domain %}
+                        <span class="input-group-text bg-light text-muted" style="font-size:.82rem;">http://</span>
+                        {% endif %}
+                        <input type="text" name="slug" id="slug" class="form-control"
+                               placeholder="ex: imobiliaria-master"
+                               value="{{ form.slug if form.slug is string else (form.get('slug','') if form.get is defined else '') }}"
+                               pattern="[a-z0-9-]+" title="Apenas letras minúsculas, números e hífens">
+                        {% if base_domain %}
+                        <span class="input-group-text bg-light text-muted" style="font-size:.82rem;">.{{ base_domain }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="text-muted small mt-1">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Gerado automaticamente se deixado vazio. Só letras minúsculas, números e hífens.
+                        {% if base_domain %}URL de acesso: <code>slug.{{ base_domain }}</code>{% endif %}
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label fw-bold small">
+                        Domínio personalizado <span class="text-muted fw-normal">(opcional)</span>
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light text-muted" style="font-size:.82rem;">http://</span>
+                        <input type="text" name="dominio_personalizado" class="form-control"
+                               placeholder="ex: www.imobiliaria.com.br"
+                               value="{{ form.dominio_personalizado if form.dominio_personalizado is string else (form.get('dominio_personalizado','') if form.get is defined else '') }}">
+                    </div>
+                    <div class="text-muted small mt-1">
+                        <i class="bi bi-info-circle me-1"></i>
+                        O DNS deste domínio deve apontar para o IP do servidor.
+                        Se preenchido, tem prioridade sobre o subdomínio.
+                    </div>
+                </div>
+
+                <div class="col-12" style="display:none;">
+                    {# Campo legado mantido para compatibilidade #}
+                    <input type="hidden" name="dominio"
+                           value="{{ form.dominio if form.dominio is string else (form.get('dominio','') if form.get is defined else '') }}">
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-bold small">Plano</label>
+                    <select name="plano" class="form-select">
+                        {% for p in planos %}
+                        <option value="{{ p }}"
+                            {% if form.plano == p or (form.get is defined and form.get('plano') == p) %}selected{% endif %}>
+                            {{ p | capitalize }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ── Usuário administrador (só na criação) ── #}
+    {% if not editando %}
+    <div class="col-lg-5">
+        <div class="form-card">
+            <div class="section-label"><i class="bi bi-person-fill me-1"></i> Administrador Inicial</div>
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label fw-bold small">Nome</label>
+                    <input type="text" name="adm_nome" class="form-control"
+                           placeholder="Nome completo"
+                           value="{{ form.get('adm_nome','') if form.get is defined else '' }}"
+                           required>
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-bold small">E-mail</label>
+                    <input type="email" name="adm_email" class="form-control"
+                           placeholder="admin@imobiliaria.com.br"
+                           value="{{ form.get('adm_email','') if form.get is defined else '' }}"
+                           required>
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-bold small">Senha <span class="text-muted fw-normal">(mín. 6 caracteres)</span></label>
+                    <input type="password" name="adm_senha" class="form-control"
+                           placeholder="••••••••" minlength="6" required>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-lg-5">
+        <div class="form-card" style="background:#f8f9ff;box-shadow:none;border:1px solid #e8f0fe;">
+            <div class="section-label"><i class="bi bi-people me-1"></i> Usuários</div>
+            <p class="text-muted small mb-3">
+                Gerencie os usuários desta imobiliária na tela de usuários.
+            </p>
+            <a href="{{ url_for('superadmin.usuarios_imobiliaria', id=imob.id) }}"
+               class="btn btn-outline-primary btn-sm px-3">
+                <i class="bi bi-people me-1"></i> Gerenciar Usuários
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<div class="d-flex justify-content-between align-items-center mt-2">
+    <a href="{{ url_for('superadmin.dashboard') }}" class="btn btn-outline-secondary px-4">Cancelar</a>
+    <button type="submit" class="btn btn-primary px-5 shadow-sm"
+            style="background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;">
+        <i class="bi bi-check-lg me-1"></i> {{ 'Salvar Alterações' if editando else 'Criar Imobiliária' }}
+    </button>
+</div>
+</form>
+{% endblock %}

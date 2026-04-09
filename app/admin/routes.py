@@ -20,6 +20,26 @@ TEMAS = [
 
 admin_bp = Blueprint('admin', __name__)
 
+
+@admin_bp.before_request
+def verificar_acesso_admin():
+    """Bloqueia superadmins e usuários de imobiliárias inativas."""
+    from flask_login import current_user
+    from flask import redirect, url_for
+    if not current_user.is_authenticated:
+        return  # login_required cuida do redirect
+    if getattr(current_user, 'is_superadmin', False):
+        return redirect(url_for('superadmin.dashboard'))
+    from ..models import Imobiliaria
+    imob = Imobiliaria.query.get(current_user.imobiliaria_id)
+    if not imob or not imob.ativo:
+        from flask_login import logout_user
+        logout_user()
+        from flask import flash
+        flash('Sua conta foi suspensa. Entre em contato com o suporte.', 'danger')
+        return redirect(url_for('auth.login'))
+
+
 # Filtro de Moeda Brasileira para os Templates
 @admin_bp.app_template_filter('moeda')
 def moeda_filter(valor):
@@ -450,3 +470,188 @@ def upload_temp_fotos():
     filename = f"{uuid.uuid4()}_{file.filename}"
     file.save(os.path.join(temp_path, filename))
     return {"status": "success"}, 200
+
+# ── CONFIGURAR PÁGINAS ────────────────────────────────────────────────────────
+
+# Páginas institucionais pré-definidas (criadas automaticamente se não existirem)
+PAGINAS_INSTITUCIONAIS = [
+    {'slug': 'sobre',       'titulo': 'Sobre a Imobiliária',    'ordem': 1},
+    {'slug': 'privacidade', 'titulo': 'Política de Privacidade','ordem': 2},
+    {'slug': 'contato',     'titulo': 'Fale Conosco',           'ordem': 3},
+]
+
+def _garantir_paginas_institucionais(imob_id):
+    """Cria as páginas institucionais da imobiliária se ainda não existirem."""
+    from ..models import PaginaSite
+    for p in PAGINAS_INSTITUCIONAIS:
+        existe = PaginaSite.query.filter_by(imobiliaria_id=imob_id,
+                                            tipo='institucional',
+                                            slug=p['slug']).first()
+        if not existe:
+            db.session.add(PaginaSite(
+                imobiliaria_id=imob_id,
+                tipo='institucional',
+                slug=p['slug'],
+                titulo=p['titulo'],
+                conteudo='',
+                ativo=False,
+                no_menu=False,
+                ordem=p['ordem'],
+            ))
+    db.session.commit()
+
+
+@admin_bp.route('/paginas')
+@login_required
+def paginas():
+    from ..models import PaginaSite, MenuLink
+    imob_id = current_user.imobiliaria_id
+    _garantir_paginas_institucionais(imob_id)
+    institucionais = PaginaSite.query.filter_by(imobiliaria_id=imob_id, tipo='institucional')\
+                                     .order_by(PaginaSite.ordem).all()
+    extras         = PaginaSite.query.filter_by(imobiliaria_id=imob_id, tipo='custom')\
+                                     .order_by(PaginaSite.ordem).all()
+    links_menu     = MenuLink.query.filter_by(imobiliaria_id=imob_id)\
+                                   .order_by(MenuLink.ordem).all()
+    return render_template('admin/paginas.html',
+                           institucionais=institucionais,
+                           extras=extras,
+                           links_menu=links_menu,
+                           tab=request.args.get('tab', 'institucionais'))
+
+
+@admin_bp.route('/paginas/institucional/<slug>', methods=['GET', 'POST'])
+@login_required
+def editar_pagina_institucional(slug):
+    from ..models import PaginaSite
+    imob_id = current_user.imobiliaria_id
+    _garantir_paginas_institucionais(imob_id)
+    pagina = PaginaSite.query.filter_by(imobiliaria_id=imob_id,
+                                        tipo='institucional', slug=slug).first_or_404()
+    if request.method == 'POST':
+        pagina.titulo   = request.form.get('titulo', pagina.titulo).strip()
+        pagina.conteudo = request.form.get('conteudo', '').strip()
+        pagina.ativo    = 'ativo' in request.form
+        pagina.no_menu  = 'no_menu' in request.form
+        db.session.commit()
+        flash('Página salva com sucesso!', 'success')
+        return redirect(url_for('admin.paginas', tab='institucionais'))
+    return render_template('admin/editar_pagina.html', pagina=pagina,
+                           back_tab='institucionais')
+
+
+@admin_bp.route('/paginas/extra/nova', methods=['POST'])
+@login_required
+def nova_pagina_extra():
+    from ..models import PaginaSite
+    import re
+    titulo = request.form.get('titulo', '').strip()
+    if not titulo:
+        flash('Informe um título para a página.', 'warning')
+        return redirect(url_for('admin.paginas', tab='extras'))
+    # Gera slug a partir do título
+    slug = re.sub(r'[^a-z0-9]+', '-', titulo.lower()).strip('-')
+    # Garante unicidade do slug
+    base_slug = slug
+    counter   = 1
+    while PaginaSite.query.filter_by(imobiliaria_id=current_user.imobiliaria_id,
+                                     slug=slug).first():
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+    maior_ordem = db.session.query(db.func.max(PaginaSite.ordem))\
+                             .filter_by(imobiliaria_id=current_user.imobiliaria_id,
+                                        tipo='custom').scalar() or 0
+    pagina = PaginaSite(
+        imobiliaria_id=current_user.imobiliaria_id,
+        tipo='custom',
+        slug=slug,
+        titulo=titulo,
+        conteudo='',
+        ativo=True,
+        no_menu=False,
+        ordem=maior_ordem + 1,
+    )
+    db.session.add(pagina)
+    db.session.commit()
+    flash('Página criada! Edite o conteúdo abaixo.', 'success')
+    return redirect(url_for('admin.editar_pagina_extra', id=pagina.id))
+
+
+@admin_bp.route('/paginas/extra/<int:id>', methods=['GET', 'POST'])
+@login_required
+def editar_pagina_extra(id):
+    from ..models import PaginaSite
+    pagina = PaginaSite.query.filter_by(id=id,
+                                        imobiliaria_id=current_user.imobiliaria_id,
+                                        tipo='custom').first_or_404()
+    if request.method == 'POST':
+        pagina.titulo   = request.form.get('titulo', pagina.titulo).strip()
+        pagina.conteudo = request.form.get('conteudo', '').strip()
+        pagina.ativo    = 'ativo' in request.form
+        pagina.no_menu  = 'no_menu' in request.form
+        db.session.commit()
+        flash('Página salva com sucesso!', 'success')
+        return redirect(url_for('admin.paginas', tab='extras'))
+    return render_template('admin/editar_pagina.html', pagina=pagina,
+                           back_tab='extras')
+
+
+@admin_bp.route('/paginas/extra/excluir/<int:id>', methods=['POST'])
+@login_required
+def excluir_pagina_extra(id):
+    from ..models import PaginaSite
+    pagina = PaginaSite.query.filter_by(id=id,
+                                        imobiliaria_id=current_user.imobiliaria_id,
+                                        tipo='custom').first_or_404()
+    db.session.delete(pagina)
+    db.session.commit()
+    flash('Página excluída.', 'success')
+    return redirect(url_for('admin.paginas', tab='extras'))
+
+
+@admin_bp.route('/paginas/menu/novo', methods=['POST'])
+@login_required
+def novo_menu_link():
+    from ..models import MenuLink
+    label = request.form.get('label', '').strip()
+    url   = request.form.get('url',   '').strip()
+    if not label or not url:
+        flash('Preencha o nome e o URL do link.', 'warning')
+        return redirect(url_for('admin.paginas', tab='menu'))
+    maior_ordem = db.session.query(db.func.max(MenuLink.ordem))\
+                             .filter_by(imobiliaria_id=current_user.imobiliaria_id).scalar() or 0
+    link = MenuLink(
+        imobiliaria_id=current_user.imobiliaria_id,
+        label=label,
+        url=url,
+        abre_nova_aba='abre_nova_aba' in request.form,
+        ordem=maior_ordem + 1,
+        ativo=True,
+    )
+    db.session.add(link)
+    db.session.commit()
+    flash('Link adicionado ao menu!', 'success')
+    return redirect(url_for('admin.paginas', tab='menu'))
+
+
+@admin_bp.route('/paginas/menu/excluir/<int:id>', methods=['POST'])
+@login_required
+def excluir_menu_link(id):
+    from ..models import MenuLink
+    link = MenuLink.query.filter_by(id=id,
+                                    imobiliaria_id=current_user.imobiliaria_id).first_or_404()
+    db.session.delete(link)
+    db.session.commit()
+    flash('Link removido do menu.', 'success')
+    return redirect(url_for('admin.paginas', tab='menu'))
+
+
+@admin_bp.route('/paginas/menu/toggle/<int:id>', methods=['POST'])
+@login_required
+def toggle_menu_link(id):
+    from ..models import MenuLink
+    link = MenuLink.query.filter_by(id=id,
+                                    imobiliaria_id=current_user.imobiliaria_id).first_or_404()
+    link.ativo = not link.ativo
+    db.session.commit()
+    return redirect(url_for('admin.paginas', tab='menu'))

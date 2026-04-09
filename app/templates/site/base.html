@@ -79,6 +79,19 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto align-items-lg-center">
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('site.index') }}">Início</a></li>
+                {% for p in menu_paginas %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('site.pagina', slug=p.slug) }}">{{ p.titulo }}</a>
+                </li>
+                {% endfor %}
+                {% for link in menu_links %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ link.url }}"
+                       {% if link.abre_nova_aba %}target="_blank" rel="noopener"{% endif %}>
+                        {{ link.label }}
+                    </a>
+                </li>
+                {% endfor %}
                 <li class="nav-item"><a class="nav-link" href="#contato">Contato</a></li>
                 <li class="nav-item ms-lg-2">
                     <a class="btn btn-primary btn-sm px-3"
@@ -95,11 +108,31 @@
     <div class="container text-center">
         {% if g.imobiliaria.logo_url %}
         <img src="{{ url_for('static', filename=g.imobiliaria.logo_url) }}"
-             alt="{{ g.imobiliaria.nome }}" style="max-height: 50px; object-fit: contain; margin-bottom: .75rem;">
+             alt="{{ g.imobiliaria.nome }}"
+             style="max-height:50px;object-fit:contain;margin-bottom:.75rem;">
         {% else %}
         <h5 class="fw-bold">{{ g.imobiliaria.nome }}</h5>
         {% endif %}
-        <p class="small mb-3 opacity-75">Encontre o imóvel dos seus sonhos conosco.</p>
+
+        <p class="small mb-3 opacity-75">
+            {{ g.imobiliaria.slogan or 'Encontre o imóvel dos seus sonhos conosco.' }}
+        </p>
+
+        {% if g.imobiliaria.email_exibicao or g.imobiliaria.telefone %}
+        <div class="mb-3 d-flex flex-wrap justify-content-center gap-3" style="font-size:.82rem;">
+            {% if g.imobiliaria.email_exibicao %}
+            <span class="opacity-75">
+                <i class="bi bi-envelope me-1"></i>{{ g.imobiliaria.email_exibicao }}
+            </span>
+            {% endif %}
+            {% if g.imobiliaria.telefone %}
+            <span class="opacity-75">
+                <i class="bi bi-telephone me-1"></i>{{ g.imobiliaria.telefone }}
+            </span>
+            {% endif %}
+        </div>
+        {% endif %}
+
         <div class="mb-3 d-flex justify-content-center gap-3">
             <a href="#" title="Instagram"><i class="bi bi-instagram fs-5"></i></a>
             <a href="#" title="Facebook"><i class="bi bi-facebook fs-5"></i></a>

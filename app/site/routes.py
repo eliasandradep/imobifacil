@@ -32,10 +32,22 @@ def index():
     if quartos:
         query = query.filter(Imovel.quartos >= int(quartos))
 
-    page       = request.args.get('page', 1, type=int)
-    per_page   = int(g.imobiliaria.layout_grid or 3) * 3   # linhas fixas: 3
-    pagination = (query.order_by(Imovel.id.desc())
-                       .paginate(page=page, per_page=per_page, error_out=False))
+    # ── Ordenação configurável ──────────────────────────────────
+    _ord_map = {
+        'recentes':   Imovel.id.desc(),
+        'destaque':   (Imovel.destaque.desc(), Imovel.id.desc()),
+        'preco_asc':  Imovel.preco.asc(),
+        'preco_desc': Imovel.preco.desc(),
+    }
+    _ord_val = _ord_map.get(g.imobiliaria.ordenacao_imoveis or 'recentes', Imovel.id.desc())
+    if isinstance(_ord_val, tuple):
+        query = query.order_by(*_ord_val)
+    else:
+        query = query.order_by(_ord_val)
+
+    page     = request.args.get('page', 1, type=int)
+    per_page = g.imobiliaria.imoveis_por_pagina or 9
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
     tipos = TipoImovel.query.filter_by(imobiliaria_id=g.imobiliaria.id).all()
 
@@ -54,3 +66,16 @@ def index():
 def detalhes(id):
     imovel = Imovel.query.filter_by(id=id, imobiliaria_id=g.imobiliaria.id).first_or_404()
     return render_template('site/detalhes.html', imovel=imovel)
+
+
+@site_bp.route('/p/<slug>')
+def pagina(slug):
+    from ..models import PaginaSite
+    if not g.imobiliaria:
+        return "Imobiliária não configurada para este domínio.", 404
+    p = PaginaSite.query.filter_by(
+        imobiliaria_id=g.imobiliaria.id,
+        slug=slug,
+        ativo=True
+    ).first_or_404()
+    return render_template('site/pagina.html', pagina=p)

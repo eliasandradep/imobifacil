@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block page_title %}Plataforma{% endblock %} — ImobiFácil Master</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            display: flex;
+            min-height: 100vh;
+            background: #f0f2f5;
+            margin: 0;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        /* ── Sidebar ── */
+        #sidebar {
+            width: 240px;
+            background: #1a0533;
+            color: #fff;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+        }
+        #sidebar .brand {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,.08);
+        }
+        #sidebar .brand h4 { margin: 0; font-weight: 800; letter-spacing: -.5px; font-size: 1.1rem; }
+        #sidebar .brand small { color: rgba(255,255,255,.35); font-size: .68rem; letter-spacing: .5px; text-transform: uppercase; }
+
+        .nav-group-label {
+            padding: .75rem 1.5rem .25rem;
+            font-size: .58rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,.25);
+        }
+        .nav-link-side {
+            display: flex;
+            align-items: center;
+            gap: .6rem;
+            padding: .65rem 1.5rem;
+            color: rgba(255,255,255,.6);
+            text-decoration: none;
+            font-size: .87rem;
+            transition: background .15s, color .15s, border-left .15s;
+            border-left: 3px solid transparent;
+        }
+        .nav-link-side i { font-size: 1rem; width: 1.1rem; text-align: center; }
+        .nav-link-side:hover { background: rgba(255,255,255,.07); color: #fff; }
+        .nav-link-side.active {
+            background: rgba(168, 85, 247, .2);
+            color: #fff;
+            border-left-color: #a855f7;
+        }
+
+        /* ── Main ── */
+        #main-content { flex: 1; padding: 1.75rem 2rem; overflow-y: auto; }
+        .modal-backdrop { display: none !important; }
+
+        /* ── Cards ── */
+        .card { border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+        .flash-area .alert { border: none; border-radius: 8px; font-size: .9rem; }
+
+        /* ── Badge master ── */
+        .badge-master {
+            background: linear-gradient(135deg, #7c3aed, #a855f7);
+            color: #fff;
+            font-size: .6rem;
+            padding: .15rem .5rem;
+            border-radius: 20px;
+            font-weight: 700;
+            letter-spacing: .5px;
+            text-transform: uppercase;
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+
+<nav id="sidebar">
+    <div class="brand">
+        <h4>Imobi<span style="color:#a855f7;">Fácil</span></h4>
+        <small>Painel Master</small>
+    </div>
+
+    <div class="mt-2 flex-grow-1">
+        <a href="{{ url_for('superadmin.dashboard') }}"
+           class="nav-link-side {% if request.endpoint == 'superadmin.dashboard' %}active{% endif %}">
+            <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+
+        <div class="nav-group-label">Imobiliárias</div>
+
+        <a href="{{ url_for('superadmin.dashboard') }}"
+           class="nav-link-side {% if request.endpoint in ['superadmin.dashboard','superadmin.nova_imobiliaria','superadmin.editar_imobiliaria'] %}active{% endif %}">
+            <i class="bi bi-building"></i> Gerenciar
+        </a>
+
+        <a href="{{ url_for('superadmin.nova_imobiliaria') }}"
+           class="nav-link-side {% if request.endpoint == 'superadmin.nova_imobiliaria' %}active{% endif %}">
+            <i class="bi bi-plus-circle"></i> Nova Imobiliária
+        </a>
+
+        <div class="nav-group-label">Plataforma</div>
+
+        <a href="{{ url_for('superadmin.dashboard') }}#dominios"
+           class="nav-link-side {% if request.endpoint == 'superadmin.dominios_imobiliaria' %}active{% endif %}">
+            <i class="bi bi-globe"></i> Domínios
+        </a>
+    </div>
+
+    <div class="border-top p-3" style="border-color: rgba(255,255,255,.08) !important;">
+        {% if current_user.is_authenticated %}
+        <div class="d-flex align-items-center gap-2 mb-2">
+            <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
+                 style="width:30px;height:30px;font-size:.75rem;flex-shrink:0;background:linear-gradient(135deg,#7c3aed,#a855f7);">
+                {{ current_user.nome[0].upper() }}
+            </div>
+            <div style="overflow:hidden;">
+                <div class="text-white fw-bold" style="font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                    {{ current_user.nome }}
+                </div>
+                <span class="badge-master">Master</span>
+            </div>
+        </div>
+        {% endif %}
+        <a href="{{ url_for('superadmin.logout') }}" class="nav-link-side text-danger ps-0" style="border:none;">
+            <i class="bi bi-box-arrow-right"></i> Sair
+        </a>
+    </div>
+</nav>
+
+<main id="main-content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-area mb-3">
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm" role="alert">
+                {% if category == 'success' %}<i class="bi bi-check-circle-fill me-2"></i>
+                {% elif category == 'danger'  %}<i class="bi bi-exclamation-triangle-fill me-2"></i>
+                {% elif category == 'warning' %}<i class="bi bi-exclamation-circle-fill me-2"></i>
+                {% elif category == 'info'    %}<i class="bi bi-info-circle-fill me-2"></i>
+                {% endif %}
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
