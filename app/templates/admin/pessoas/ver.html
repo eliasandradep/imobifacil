@@ -1,0 +1,311 @@
+{% extends 'admin/base.html' %}
+
+{% block head %}
+<style>
+    .info-card { background:#fff; border-radius:12px;
+                 box-shadow:0 2px 8px rgba(0,0,0,.06); padding:1.5rem 1.75rem; margin-bottom:1.25rem; }
+    .section-label { font-size:.68rem; font-weight:700; text-transform:uppercase;
+                     letter-spacing:1.5px; color:#0d6efd;
+                     border-bottom:2px solid #e8f0fe; padding-bottom:.5rem; margin-bottom:1.25rem; }
+    .tipo-badge {
+        font-size:.8rem; font-weight:700; padding:.3rem .9rem; border-radius:20px;
+    }
+    .tipo-Cliente      { background:#dbeafe; color:#1d4ed8; }
+    .tipo-Corretor     { background:#d1fae5; color:#065f46; }
+    .tipo-Proprietário { background:#fef3c7; color:#92400e; }
+    .tipo-Locatário    { background:#ede9fe; color:#5b21b6; }
+    .tipo-Interessado  { background:#fce7f3; color:#9d174d; }
+    .tipo-Outro        { background:#f3f4f6; color:#374151; }
+
+    .tel-row { display:flex; align-items:center; gap:.75rem; padding:.6rem 0;
+               border-bottom:1px solid #f1f5f9; }
+    .tel-row:last-child { border-bottom:none; }
+    .tel-tipo-tag { font-size:.7rem; background:#f0f4ff; color:#3b5998;
+                    border-radius:6px; padding:.15rem .55rem; font-weight:700; flex-shrink:0; }
+
+    .lead-row td { vertical-align:middle; font-size:.87rem; }
+    .status-badge { font-size:.72rem; padding:.2rem .6rem; border-radius:8px; font-weight:700; }
+    .status-Novo        { background:#dbeafe; color:#1d4ed8; }
+    .status-Qualificado { background:#d1fae5; color:#065f46; }
+    .status-Arquivado   { background:#f3f4f6; color:#374151; }
+    .status-Perdido     { background:#fee2e2; color:#b91c1c; }
+
+    .info-item { margin-bottom:.75rem; }
+    .info-item .label { font-size:.72rem; text-transform:uppercase; letter-spacing:.8px;
+                        color:#94a3b8; font-weight:700; margin-bottom:.15rem; }
+    .info-item .value { font-size:.92rem; color:#1e293b; font-weight:500; }
+</style>
+{% endblock %}
+
+{% block content %}
+{# ── Cabeçalho ── #}
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div class="d-flex align-items-center gap-3">
+        <a href="{{ url_for('pessoas.listar_pessoas') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold"
+             style="width:48px;height:48px;font-size:1.2rem;flex-shrink:0;">
+            {{ pessoa.nome[0].upper() }}
+        </div>
+        <div>
+            <h2 class="h3 fw-bold mb-1">{{ pessoa.nome }}</h2>
+            <span class="tipo-badge tipo-{{ pessoa.tipo }}">{{ pessoa.tipo }}</span>
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <form method="POST" action="{{ url_for('pessoas.novo_lead_da_pessoa', id=pessoa.id) }}">
+            <button type="submit" class="btn btn-outline-success">
+                <i class="bi bi-person-lines-fill me-1"></i> Novo Lead
+            </button>
+        </form>
+        <a href="{{ url_for('pessoas.editar_pessoa', id=pessoa.id) }}"
+           class="btn btn-primary px-4 shadow-sm">
+            <i class="bi bi-pencil me-1"></i> Editar
+        </a>
+        <form method="POST" action="{{ url_for('pessoas.excluir_pessoa', id=pessoa.id) }}"
+              onsubmit="return confirm('Excluir \'{{ pessoa.nome | e }}\'?')">
+            <button type="submit" class="btn btn-outline-danger">
+                <i class="bi bi-trash3"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="row g-4">
+
+    {# ── Coluna esquerda: dados ── #}
+    <div class="col-lg-4">
+
+        {# Contato #}
+        <div class="info-card">
+            <div class="section-label"><i class="bi bi-person me-1"></i> Contato</div>
+
+            {% if pessoa.documento %}
+            <div class="info-item">
+                <div class="label">Documento</div>
+                <div class="value" style="font-family:monospace;">{{ pessoa.documento }}</div>
+            </div>
+            {% endif %}
+
+            {% if pessoa.data_nascimento %}
+            <div class="info-item">
+                <div class="label">Data de nascimento</div>
+                <div class="value">{{ pessoa.data_nascimento.strftime('%d/%m/%Y') }}</div>
+            </div>
+            {% endif %}
+
+            {% if pessoa.email %}
+            <div class="info-item">
+                <div class="label">E-mail</div>
+                <div class="value">
+                    <a href="mailto:{{ pessoa.email }}" class="text-decoration-none">{{ pessoa.email }}</a>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="info-item">
+                <div class="label">Cadastrado em</div>
+                <div class="value">{{ pessoa.data_cadastro.strftime('%d/%m/%Y') if pessoa.data_cadastro else '—' }}</div>
+            </div>
+        </div>
+
+        {# Endereço #}
+        {% if pessoa.logradouro or pessoa.cidade %}
+        <div class="info-card">
+            <div class="section-label"><i class="bi bi-geo-alt me-1"></i> Endereço</div>
+            {% if pessoa.logradouro %}
+            <div class="info-item">
+                <div class="label">Logradouro</div>
+                <div class="value">
+                    {{ pessoa.logradouro }}{% if pessoa.numero %}, {{ pessoa.numero }}{% endif %}
+                    {% if pessoa.complemento %} — {{ pessoa.complemento }}{% endif %}
+                </div>
+            </div>
+            {% endif %}
+            {% if pessoa.bairro %}
+            <div class="info-item">
+                <div class="label">Bairro</div>
+                <div class="value">{{ pessoa.bairro }}</div>
+            </div>
+            {% endif %}
+            {% if pessoa.cidade %}
+            <div class="info-item">
+                <div class="label">Cidade / UF</div>
+                <div class="value">{{ pessoa.cidade }}{% if pessoa.estado %} — {{ pessoa.estado }}{% endif %}</div>
+            </div>
+            {% endif %}
+            {% if pessoa.cep %}
+            <div class="info-item mb-0">
+                <div class="label">CEP</div>
+                <div class="value" style="font-family:monospace;">{{ pessoa.cep }}</div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {# Telefones #}
+        <div class="info-card">
+            <div class="section-label"><i class="bi bi-telephone me-1"></i> Telefones</div>
+            {% if pessoa.telefones %}
+            {% for tel in pessoa.telefones %}
+            <div class="tel-row">
+                <span class="tel-tipo-tag">{{ tel.tipo }}</span>
+                <span class="fw-bold">{{ tel.numero }}</span>
+                <a href="https://wa.me/55{{ tel.numero | replace('(','') | replace(')','') | replace(' ','') | replace('-','') }}"
+                   target="_blank" class="ms-auto text-success" title="Abrir WhatsApp">
+                    <i class="bi bi-whatsapp"></i>
+                </a>
+            </div>
+            {% endfor %}
+            {% else %}
+            <span class="text-muted small">Nenhum telefone cadastrado.</span>
+            {% endif %}
+        </div>
+
+        {# Observações #}
+        {% if pessoa.observacoes %}
+        <div class="info-card">
+            <div class="section-label"><i class="bi bi-card-text me-1"></i> Observações</div>
+            <p class="small text-muted mb-0" style="white-space:pre-wrap;">{{ pessoa.observacoes }}</p>
+        </div>
+        {% endif %}
+
+    </div>
+
+    {# ── Coluna direita: leads ── #}
+    <div class="col-lg-8">
+        <div class="info-card p-0">
+            <div class="px-4 py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0">
+                    <i class="bi bi-person-lines-fill me-2 text-primary"></i>
+                    Leads vinculados
+                    {% if leads %}
+                    <span class="badge bg-primary-subtle text-primary ms-1">{{ leads | length }}</span>
+                    {% endif %}
+                </h6>
+                {# Botão para vincular um lead existente #}
+                <button type="button" class="btn btn-outline-primary btn-sm"
+                        data-bs-toggle="modal" data-bs-target="#modalVincularLead">
+                    <i class="bi bi-link-45deg me-1"></i> Vincular Lead
+                </button>
+            </div>
+
+            {% if leads %}
+            <div class="table-responsive">
+                <table class="table mb-0 lead-row">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.8px;color:#888;font-weight:700;">Nome no lead</th>
+                            <th style="font-size:.72rem;text-transform:uppercase;letter-spacing:.8px;color:#888;font-weight:700;">Status</th>
+                            <th style="font-size:.72rem;text-transform:uppercase;letter-spacing:.8px;color:#888;font-weight:700;">Origem</th>
+                            <th style="font-size:.72rem;text-transform:uppercase;letter-spacing:.8px;color:#888;font-weight:700;">Data</th>
+                            <th class="text-end pe-4" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.8px;color:#888;font-weight:700;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for lead in leads %}
+                    <tr>
+                        <td class="ps-4 fw-semibold">{{ lead.nome }}</td>
+                        <td>
+                            <span class="status-badge status-{{ lead.status }}">{{ lead.status }}</span>
+                        </td>
+                        <td class="text-muted small">{{ lead.origem }}</td>
+                        <td class="text-muted small">{{ lead.data_contato.strftime('%d/%m/%Y') }}</td>
+                        <td class="text-end pe-4">
+                            <div class="d-flex gap-1 justify-content-end">
+                                <a href="{{ url_for('leads.editar_lead', id=lead.id) }}"
+                                   class="btn btn-outline-secondary btn-sm" title="Ver lead">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <form method="POST"
+                                      action="{{ url_for('pessoas.desvincular_lead', pessoa_id=pessoa.id, lead_id=lead.id) }}"
+                                      onsubmit="return confirm('Desvincular este lead da pessoa?')">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm" title="Desvincular">
+                                        <i class="bi bi-link-45deg" style="text-decoration:line-through;"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-person-lines-fill fs-1 opacity-25 d-block mb-2"></i>
+                Nenhum lead vinculado a esta pessoa.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+{# ── Modal: vincular lead ── #}
+<div class="modal fade" id="modalVincularLead" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0">
+                <h6 class="modal-title fw-bold">Vincular Lead a {{ pessoa.nome }}</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="buscaLeadModal" class="form-control mb-3"
+                       placeholder="Buscar lead por nome ou telefone…">
+                <div id="resultadosLeadModal" style="max-height:300px;overflow-y:auto;">
+                    <p class="text-muted small text-center">Digite para buscar leads disponíveis.</p>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Busca de leads no modal ──
+const pessoaId = {{ pessoa.id }};
+let timer;
+
+document.getElementById('buscaLeadModal').addEventListener('input', function () {
+    clearTimeout(timer);
+    const q = this.value.trim();
+    if (!q) {
+        document.getElementById('resultadosLeadModal').innerHTML =
+            '<p class="text-muted small text-center">Digite para buscar leads disponíveis.</p>';
+        return;
+    }
+    timer = setTimeout(() => buscarLeads(q), 300);
+});
+
+async function buscarLeads(q) {
+    const res  = await fetch(`/admin/leads/buscar-para-vincular?q=${encodeURIComponent(q)}&pessoa_id=${pessoaId}`);
+    const data = await res.json();
+    const div  = document.getElementById('resultadosLeadModal');
+
+    if (!data.length) {
+        div.innerHTML = '<p class="text-muted small text-center">Nenhum lead encontrado.</p>';
+        return;
+    }
+
+    div.innerHTML = data.map(l => `
+        <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+            <div>
+                <div class="fw-semibold small">${l.nome}</div>
+                <div class="text-muted" style="font-size:.75rem;">${l.telefone} · ${l.status}</div>
+            </div>
+            <form method="POST"
+                  action="/admin/pessoas/${pessoaId}/vincular-lead/${l.id}">
+                <button type="submit" class="btn btn-primary btn-sm px-3">
+                    <i class="bi bi-link-45deg me-1"></i> Vincular
+                </button>
+            </form>
+        </div>`).join('');
+}
+</script>
+{% endblock %}

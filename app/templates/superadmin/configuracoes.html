@@ -1,0 +1,486 @@
+{% extends 'superadmin/base.html' %}
+{% block page_title %}Configurações da Plataforma{% endblock %}
+
+{% block head %}
+<style>
+    .cfg-card {
+        background: #fff;
+        border-radius: 14px;
+        box-shadow: 0 2px 10px rgba(0,0,0,.06);
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+    }
+    .cfg-card-header {
+        padding: 1.1rem 1.75rem;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+    }
+    .cfg-card-header .icon-wrap {
+        width: 36px; height: 36px;
+        border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1rem; flex-shrink: 0;
+    }
+    .cfg-card-header h6 {
+        font-size: .9rem; font-weight: 700; margin: 0;
+        color: #1e293b;
+    }
+    .cfg-card-header p {
+        font-size: .75rem; color: #94a3b8; margin: 0;
+    }
+    .cfg-card-body { padding: 1.5rem 1.75rem; }
+
+    .cfg-field label {
+        font-size: .75rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: .8px;
+        color: #64748b; margin-bottom: .35rem; display: block;
+    }
+    .cfg-field .hint {
+        font-size: .72rem; color: #94a3b8; margin-top: .3rem;
+    }
+    .cfg-field { margin-bottom: 1.1rem; }
+
+    .env-path-bar {
+        background: #0f172a; color: #94a3b8;
+        border-radius: 10px; padding: .7rem 1rem;
+        font-size: .75rem; font-family: monospace;
+        display: flex; align-items: center; gap: .75rem;
+        margin-bottom: 1.5rem;
+    }
+    .env-path-bar i { color: #a855f7; font-size: 1rem; flex-shrink: 0; }
+    .env-path-bar span { color: #e2e8f0; word-break: break-all; }
+
+    .toggle-secret { cursor: pointer; user-select: none; }
+
+    .section-divider {
+        display: grid; grid-template-columns: 1fr auto 1fr;
+        align-items: center; gap: 1rem;
+        color: #cbd5e1; font-size: .7rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 1px;
+        margin: 1.5rem 0 1.25rem;
+    }
+    .section-divider::before, .section-divider::after {
+        content: ''; height: 1px; background: #f1f5f9;
+    }
+
+    .radio-option {
+        border: 2px solid #e2e8f0; border-radius: 10px;
+        padding: .65rem 1rem; cursor: pointer;
+        transition: all .15s; display: flex; align-items: center; gap: .6rem;
+    }
+    .radio-option:has(input:checked) {
+        border-color: #a855f7; background: #faf5ff;
+    }
+    .radio-option input { accent-color: #a855f7; }
+    .radio-option .rl { font-size: .82rem; font-weight: 600; color: #334155; }
+    .radio-option .rs { font-size: .7rem; color: #94a3b8; }
+
+    .status-dot {
+        width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+    .dot-ok  { background: #16a34a; }
+    .dot-off { background: #94a3b8; }
+    .dot-warn { background: #f59e0b; }
+
+    .smtp-status {
+        border-radius: 10px; padding: .75rem 1rem;
+        font-size: .8rem; display: flex; align-items: center; gap: .6rem;
+        margin-bottom: 1.25rem;
+    }
+    .smtp-ok   { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+    .smtp-off  { background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ── Cabeçalho ── #}
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h2 class="h3 fw-bold mb-1" style="color:#1e293b;">Configurações da Plataforma</h2>
+        <p class="text-muted small mb-0">
+            Gerencie as variáveis de ambiente que controlam domínios, e-mail e comportamento do servidor.
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <form method="POST" action="{{ url_for('superadmin.testar_smtp') }}">
+            <button type="submit" class="btn btn-outline-secondary btn-sm px-3">
+                <i class="bi bi-send me-1"></i> Testar SMTP
+            </button>
+        </form>
+        <button type="submit" form="form-env" class="btn btn-sm px-4 text-white fw-bold"
+                style="background:linear-gradient(135deg,#7c3aed,#a855f7);">
+            <i class="bi bi-check-lg me-1"></i> Salvar
+        </button>
+    </div>
+</div>
+
+{# ── Caminho do arquivo ── #}
+<div class="env-path-bar">
+    <i class="bi bi-file-earmark-code-fill"></i>
+    <div>
+        <div style="color:#64748b;font-size:.65rem;margin-bottom:2px;">Arquivo de configuração</div>
+        <span>{{ env_path }}</span>
+    </div>
+    {% if env_existe %}
+    <span class="ms-auto badge" style="background:#1e293b;color:#4ade80;font-size:.65rem;">
+        <i class="bi bi-check-circle-fill me-1"></i> arquivo encontrado
+    </span>
+    {% else %}
+    <span class="ms-auto badge bg-warning text-dark" style="font-size:.65rem;">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i> será criado ao salvar
+    </span>
+    {% endif %}
+</div>
+
+<form id="form-env" method="POST" action="{{ url_for('superadmin.configuracoes_plataforma') }}">
+<input type="hidden" name="_acao" value="salvar">
+
+{# ════════════════════════════════════════════════
+   SEÇÃO 1 — GERAL / SEGURANÇA
+   ════════════════════════════════════════════════ #}
+<div class="cfg-card">
+    <div class="cfg-card-header">
+        <div class="icon-wrap" style="background:#ede9fe;">
+            <i class="bi bi-shield-lock-fill text-purple" style="color:#7c3aed;"></i>
+        </div>
+        <div>
+            <h6>Segurança e Banco de Dados</h6>
+            <p>Chave secreta da aplicação e URI do banco de dados</p>
+        </div>
+    </div>
+    <div class="cfg-card-body">
+        <div class="row g-3">
+            <div class="col-12 cfg-field">
+                <label>SECRET_KEY</label>
+                <div class="input-group">
+                    <input type="password" id="secret_key_input" name="SECRET_KEY"
+                           class="form-control font-monospace"
+                           value="{{ env.get('SECRET_KEY','') }}"
+                           placeholder="Chave secreta longa e aleatória" required>
+                    <button type="button" class="btn btn-outline-secondary toggle-secret"
+                            onclick="toggleVis('secret_key_input', this)">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary"
+                            onclick="gerarSecret()" title="Gerar chave aleatória">
+                        <i class="bi bi-arrow-repeat"></i>
+                    </button>
+                </div>
+                <p class="hint">Use uma string longa e aleatória em produção. Nunca compartilhe esta chave.</p>
+            </div>
+
+            <div class="col-12 cfg-field mb-0">
+                <label>DATABASE_URL</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="bi bi-database-fill text-muted"></i></span>
+                    <input type="text" name="DATABASE_URL" class="form-control font-monospace"
+                           value="{{ env.get('DATABASE_URL','sqlite:///imobifacil.db') }}"
+                           placeholder="sqlite:///imobifacil.db">
+                </div>
+                <p class="hint">
+                    SQLite (padrão): <code>sqlite:///imobifacil.db</code> &nbsp;|&nbsp;
+                    PostgreSQL: <code>postgresql://user:senha@host/banco</code>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ════════════════════════════════════════════════
+   SEÇÃO 2 — DOMÍNIOS / PLATAFORMA
+   ════════════════════════════════════════════════ #}
+<div class="cfg-card">
+    <div class="cfg-card-header">
+        <div class="icon-wrap" style="background:#dbeafe;">
+            <i class="bi bi-globe-americas" style="color:#1d4ed8;"></i>
+        </div>
+        <div>
+            <h6>Domínios da Plataforma</h6>
+            <p>Controle de subdomínios automáticos por slug (multi-tenant)</p>
+        </div>
+    </div>
+    <div class="cfg-card-body">
+        <div class="row g-3">
+            <div class="col-md-6 cfg-field">
+                <label>BASE_DOMAIN</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light text-muted" style="font-size:.8rem;">slug.</span>
+                    <input type="text" name="BASE_DOMAIN" class="form-control font-monospace"
+                           value="{{ env.get('BASE_DOMAIN','') }}"
+                           placeholder="imobifacil.com">
+                </div>
+                <p class="hint">
+                    Deixe vazio no desenvolvimento local.<br>
+                    Em produção: <code>imobifacil.com</code> → slug da imob acessa via
+                    <code>minha-imob.imobifacil.com</code>
+                </p>
+            </div>
+
+            <div class="col-md-3 cfg-field">
+                <label>FLASK_HOST</label>
+                <input type="text" name="FLASK_HOST" class="form-control font-monospace"
+                       value="{{ env.get('FLASK_HOST','127.0.0.1') }}"
+                       placeholder="127.0.0.1">
+                <p class="hint"><code>0.0.0.0</code> aceita conexões externas</p>
+            </div>
+
+            <div class="col-md-3 cfg-field">
+                <label>FLASK_PORT</label>
+                <input type="number" name="FLASK_PORT" class="form-control font-monospace"
+                       value="{{ env.get('FLASK_PORT','5000') }}"
+                       placeholder="5000" min="1" max="65535">
+                <p class="hint">Porta padrão: 5000</p>
+            </div>
+
+            <div class="col-12 cfg-field mb-0">
+                <label>Modo de Execução (FLASK_DEBUG)</label>
+                <div class="d-flex gap-2 mt-1">
+                    {% set debug_atual = env.get('FLASK_DEBUG','false').lower() %}
+                    <label class="radio-option flex-fill">
+                        <input type="radio" name="FLASK_DEBUG" value="true"
+                               {{ 'checked' if debug_atual == 'true' }}>
+                        <div>
+                            <div class="rl"><i class="bi bi-bug-fill text-warning me-1"></i> Desenvolvimento</div>
+                            <div class="rs">FLASK_DEBUG=true — recarrega automaticamente, exibe erros detalhados</div>
+                        </div>
+                    </label>
+                    <label class="radio-option flex-fill">
+                        <input type="radio" name="FLASK_DEBUG" value="false"
+                               {{ 'checked' if debug_atual != 'true' }}>
+                        <div>
+                            <div class="rl"><i class="bi bi-rocket-takeoff-fill text-success me-1"></i> Produção</div>
+                            <div class="rs">FLASK_DEBUG=false — erros suprimidos, mais seguro e performático</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ════════════════════════════════════════════════
+   SEÇÃO 3 — E-MAIL / SMTP
+   ════════════════════════════════════════════════ #}
+<div class="cfg-card">
+    <div class="cfg-card-header">
+        <div class="icon-wrap" style="background:#d1fae5;">
+            <i class="bi bi-envelope-fill" style="color:#065f46;"></i>
+        </div>
+        <div>
+            <h6>Servidor de E-mail (SMTP)</h6>
+            <p>Envio de compatíveis, notificações de leads e alertas do sistema</p>
+        </div>
+    </div>
+    <div class="cfg-card-body">
+
+        {# Status visual do SMTP #}
+        {% if env.get('MAIL_USERNAME') %}
+        <div class="smtp-status smtp-ok">
+            <div class="status-dot dot-ok"></div>
+            SMTP configurado — <strong>{{ env.get('MAIL_USERNAME') }}</strong>
+            via {{ env.get('MAIL_SERVER','—') }}:{{ env.get('MAIL_PORT','587') }}
+        </div>
+        {% else %}
+        <div class="smtp-status smtp-off">
+            <div class="status-dot dot-off"></div>
+            SMTP não configurado — preencha os campos abaixo para habilitar o envio de e-mails.
+        </div>
+        {% endif %}
+
+        {# Atalhos de provedores #}
+        <div class="mb-3">
+            <span class="text-muted small fw-bold">Preencher automaticamente:</span>
+            <div class="d-flex flex-wrap gap-2 mt-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm"
+                        onclick="preencherSmtp('smtp.gmail.com','587','true','false')">
+                    <i class="bi bi-google me-1"></i> Gmail
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm"
+                        onclick="preencherSmtp('smtp.office365.com','587','true','false')">
+                    <i class="bi bi-microsoft me-1"></i> Outlook / Office 365
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm"
+                        onclick="preencherSmtp('smtp.sendgrid.net','587','true','false')">
+                    <i class="bi bi-lightning-charge-fill me-1"></i> SendGrid
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm"
+                        onclick="preencherSmtp('email-smtp.us-east-1.amazonaws.com','587','true','false')">
+                    <i class="bi bi-cloud-fill me-1"></i> Amazon SES
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm"
+                        onclick="preencherSmtp('smtp.mailtrap.io','2525','true','false')">
+                    <i class="bi bi-bug me-1"></i> Mailtrap (teste)
+                </button>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6 cfg-field">
+                <label>MAIL_SERVER</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="bi bi-hdd-network-fill text-muted"></i></span>
+                    <input type="text" id="mail_server" name="MAIL_SERVER" class="form-control font-monospace"
+                           value="{{ env.get('MAIL_SERVER','') }}"
+                           placeholder="smtp.gmail.com">
+                </div>
+                <p class="hint">Endereço do servidor SMTP</p>
+            </div>
+
+            <div class="col-md-2 cfg-field">
+                <label>MAIL_PORT</label>
+                <input type="number" id="mail_port" name="MAIL_PORT" class="form-control font-monospace"
+                       value="{{ env.get('MAIL_PORT','587') }}"
+                       placeholder="587" min="1" max="65535">
+                <p class="hint">587 (TLS) / 465 (SSL) / 25</p>
+            </div>
+
+            <div class="col-md-2 cfg-field">
+                <label>MAIL_USE_TLS</label>
+                <select id="mail_use_tls" name="MAIL_USE_TLS" class="form-select">
+                    <option value="true"  {{ 'selected' if env.get('MAIL_USE_TLS','true').lower()=='true' }}>true</option>
+                    <option value="false" {{ 'selected' if env.get('MAIL_USE_TLS','true').lower()=='false' }}>false</option>
+                </select>
+                <p class="hint">Recomendado: true</p>
+            </div>
+
+            <div class="col-md-2 cfg-field">
+                <label>MAIL_USE_SSL</label>
+                <select id="mail_use_ssl" name="MAIL_USE_SSL" class="form-select">
+                    <option value="false" {{ 'selected' if env.get('MAIL_USE_SSL','false').lower()=='false' }}>false</option>
+                    <option value="true"  {{ 'selected' if env.get('MAIL_USE_SSL','false').lower()=='true' }}>true</option>
+                </select>
+                <p class="hint">Use apenas com porta 465</p>
+            </div>
+
+            <div class="col-md-6 cfg-field">
+                <label>MAIL_USERNAME</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="bi bi-at text-muted"></i></span>
+                    <input type="text" id="mail_username" name="MAIL_USERNAME" class="form-control"
+                           value="{{ env.get('MAIL_USERNAME','') }}"
+                           placeholder="seu@email.com">
+                </div>
+                <p class="hint">Usuário de autenticação no servidor SMTP</p>
+            </div>
+
+            <div class="col-md-6 cfg-field">
+                <label>MAIL_PASSWORD</label>
+                <div class="input-group">
+                    <input type="password" id="mail_password" name="MAIL_PASSWORD"
+                           class="form-control font-monospace"
+                           placeholder="{{ '••••••••' if env.get('MAIL_PASSWORD') else 'Senha ou token de app' }}">
+                    <button type="button" class="btn btn-outline-secondary toggle-secret"
+                            onclick="toggleVis('mail_password', this)">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
+                <p class="hint">
+                    {% if env.get('MAIL_PASSWORD') %}
+                    <i class="bi bi-lock-fill text-success"></i> Senha salva — deixe em branco para manter.
+                    {% else %}
+                    Gmail: use uma <strong>Senha de App</strong> (não sua senha normal).
+                    {% endif %}
+                </p>
+            </div>
+
+            <div class="col-md-6 cfg-field mb-0">
+                <label>MAIL_DEFAULT_SENDER</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="bi bi-send-fill text-muted"></i></span>
+                    <input type="text" name="MAIL_DEFAULT_SENDER" class="form-control"
+                           value="{{ env.get('MAIL_DEFAULT_SENDER','') }}"
+                           placeholder="noreply@minhaempresa.com">
+                </div>
+                <p class="hint">Endereço que aparece no campo "De:" dos e-mails. Se vazio, usa MAIL_USERNAME.</p>
+            </div>
+
+            <div class="col-md-6 cfg-field mb-0 d-flex align-items-end">
+                <div class="border rounded-3 p-3 w-100" style="background:#fafafa;">
+                    <div class="fw-bold small mb-2" style="color:#374151;">
+                        <i class="bi bi-info-circle text-primary me-1"></i>
+                        Gmail — Senha de Aplicativo
+                    </div>
+                    <ol class="mb-0 ps-3" style="font-size:.75rem;color:#6b7280;line-height:1.6;">
+                        <li>Ative a verificação em 2 etapas na sua conta Google</li>
+                        <li>Acesse <strong>Conta Google → Segurança</strong></li>
+                        <li>Clique em <strong>Senhas de app</strong></li>
+                        <li>Crie uma senha para "E-mail" / "Outro"</li>
+                        <li>Cole a senha gerada no campo MAIL_PASSWORD</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ── Rodapé de ações ── #}
+<div class="d-flex justify-content-between align-items-center">
+    <p class="text-muted small mb-0">
+        <i class="bi bi-info-circle me-1"></i>
+        Algumas alterações (SECRET_KEY, DATABASE_URL) exigem reiniciar o servidor para ter efeito.
+    </p>
+    <div class="d-flex gap-2">
+        <form method="POST" action="{{ url_for('superadmin.testar_smtp') }}">
+            <button type="submit" class="btn btn-outline-secondary px-4">
+                <i class="bi bi-send me-1"></i> Testar SMTP
+            </button>
+        </form>
+        <button type="submit" form="form-env"
+                class="btn px-5 text-white fw-bold"
+                style="background:linear-gradient(135deg,#7c3aed,#a855f7);">
+            <i class="bi bi-check-lg me-1"></i> Salvar Configurações
+        </button>
+    </div>
+</div>
+
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleVis(id, btn) {
+    const input = document.getElementById(id);
+    const icon  = btn.querySelector('i');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'bi bi-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'bi bi-eye';
+    }
+}
+
+function gerarSecret() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+';
+    let key = '';
+    const arr = new Uint8Array(64);
+    window.crypto.getRandomValues(arr);
+    arr.forEach(b => key += chars[b % chars.length]);
+    const inp = document.getElementById('secret_key_input');
+    inp.value = key;
+    inp.type  = 'text';
+    inp.closest('.input-group').querySelector('.toggle-secret i').className = 'bi bi-eye-slash';
+}
+
+function preencherSmtp(server, port, tls, ssl) {
+    document.getElementById('mail_server').value  = server;
+    document.getElementById('mail_port').value    = port;
+    document.getElementById('mail_use_tls').value = tls;
+    document.getElementById('mail_use_ssl').value = ssl;
+}
+
+// Sincroniza MAIL_DEFAULT_SENDER com MAIL_USERNAME quando vazio
+document.getElementById('mail_username').addEventListener('input', function () {
+    const sender = document.querySelector('input[name="MAIL_DEFAULT_SENDER"]');
+    if (!sender.dataset.editado) {
+        sender.placeholder = this.value || 'noreply@minhaempresa.com';
+    }
+});
+document.querySelector('input[name="MAIL_DEFAULT_SENDER"]').addEventListener('input', function () {
+    this.dataset.editado = '1';
+});
+</script>
+{% endblock %}

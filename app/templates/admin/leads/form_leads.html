@@ -39,9 +39,24 @@
             {{ 'Atualize as informações do contato' if lead else 'Cadastre um novo contato manualmente' }}
         </small>
     </div>
-    <a href="{{ url_for('leads.listar_leads') }}" class="btn btn-outline-secondary">
-        <i class="bi bi-arrow-left me-1"></i> Voltar
-    </a>
+    <div class="d-flex gap-2">
+        {% if lead and not lead.pessoa_id %}
+        <form method="POST" action="{{ url_for('leads.converter_para_pessoa', id=lead.id) }}"
+              onsubmit="return confirm('Criar uma Pessoa a partir dos dados deste lead?')">
+            <button type="submit" class="btn btn-outline-success">
+                <i class="bi bi-person-check me-1"></i> Converter para Pessoa
+            </button>
+        </form>
+        {% elif lead and lead.pessoa %}
+        <a href="{{ url_for('pessoas.ver_pessoa', id=lead.pessoa.id) }}"
+           class="btn btn-outline-primary">
+            <i class="bi bi-person me-1"></i> Ver Ficha de {{ lead.pessoa.nome }}
+        </a>
+        {% endif %}
+        <a href="{{ url_for('leads.listar_leads') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Voltar
+        </a>
+    </div>
 </div>
 
 <form method="POST">
@@ -184,6 +199,130 @@
                 </div>
             </div>
 
+            <!-- PERFIL DE BUSCA -->
+            <div class="card">
+                <div class="card-header p-3">
+                    <i class="bi bi-search me-1"></i> Perfil de Busca
+                    <span class="text-muted fw-normal">(opcional)</span>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">Finalidade</label>
+                            <select name="interesse_finalidade" class="form-select">
+                                <option value="">— Não informado —</option>
+                                {% for f in ['Compra', 'Locação', 'Ambos'] %}
+                                <option value="{{ f }}"
+                                    {{ 'selected' if lead and lead.interesse_finalidade == f }}>{{ f }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">Preço mínimo</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-muted" style="font-size:.82rem;">R$</span>
+                                <input type="text" name="interesse_preco_min" class="form-control preco-mask"
+                                       placeholder="0,00"
+                                       value="{{ '%,.2f'|format(lead.interesse_preco_min|float) if lead and lead.interesse_preco_min else '' }}">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">Preço máximo</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-muted" style="font-size:.82rem;">R$</span>
+                                <input type="text" name="interesse_preco_max" class="form-control preco-mask"
+                                       placeholder="0,00"
+                                       value="{{ '%,.2f'|format(lead.interesse_preco_max|float) if lead and lead.interesse_preco_max else '' }}">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold small">Quartos mín.</label>
+                            <select name="interesse_quartos_min" class="form-select">
+                                <option value="">—</option>
+                                {% for q in [1,2,3,4,5] %}
+                                <option value="{{ q }}"
+                                    {{ 'selected' if lead and lead.interesse_quartos_min == q }}>{{ q }}+</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">Cidade de interesse</label>
+                            <input type="text" name="interesse_cidade" class="form-control"
+                                   placeholder="Ex: São Paulo"
+                                   value="{{ lead.interesse_cidade if lead and lead.interesse_cidade else '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">Bairros de interesse</label>
+                            <input type="text" name="interesse_bairros" class="form-control"
+                                   placeholder="Ex: Jardins, Moema, Vila Madalena"
+                                   value="{{ lead.interesse_bairros if lead and lead.interesse_bairros else '' }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- IMÓVEIS COMPATÍVEIS (só na edição) -->
+            {% if lead %}
+            <div class="card" id="card-imoveis-compat">
+                <div class="card-header p-3 d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-house-door me-1"></i> Imóveis compatíveis com o perfil</span>
+                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                            onclick="buscarCompativeis()">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Atualizar
+                    </button>
+                </div>
+                <div class="card-body p-3" id="imoveis-compat-body">
+                    <p class="text-muted small text-center py-2 mb-0">
+                        Salve o perfil de busca e clique em Atualizar para ver imóveis compatíveis.
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- VÍNCULO COM PESSOA -->
+            <div class="card">
+                <div class="card-header p-3">
+                    Pessoa vinculada <span class="text-muted fw-normal">(opcional)</span>
+                </div>
+                <div class="card-body p-4">
+                    <input type="hidden" name="pessoa_id" id="pessoa_id_hidden"
+                           value="{{ lead.pessoa_id if lead and lead.pessoa_id else '' }}">
+                    <div class="position-relative">
+                        <div class="input-group">
+                            <span class="input-group-text bg-light">
+                                <i class="bi bi-people text-muted"></i>
+                            </span>
+                            <input type="text" id="pessoa_busca" class="form-control"
+                                   placeholder="Buscar por nome ou documento…"
+                                   value="{{ lead.pessoa.nome if lead and lead.pessoa else '' }}"
+                                   autocomplete="off">
+                            <button type="button" class="btn btn-outline-secondary"
+                                    onclick="limparPessoa()" title="Remover vínculo">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div id="pessoa_sugestoes"
+                             class="list-group shadow-sm mt-1"
+                             style="display:none;position:absolute;z-index:200;width:100%;"></div>
+                    </div>
+                    {% if lead and lead.pessoa %}
+                    <div class="mt-2">
+                        <a href="{{ url_for('pessoas.ver_pessoa', id=lead.pessoa.id) }}"
+                           target="_blank" class="text-decoration-none small">
+                            <i class="bi bi-box-arrow-up-right me-1"></i>
+                            Ver ficha de {{ lead.pessoa.nome }}
+                        </a>
+                    </div>
+                    {% endif %}
+                    <small class="text-muted d-block mt-2">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Consolide o histórico vinculando a uma
+                        <a href="{{ url_for('pessoas.listar_pessoas') }}">pessoa já cadastrada</a>
+                        ou <a href="{{ url_for('pessoas.nova_pessoa') }}" target="_blank">crie uma nova</a>.
+                    </small>
+                </div>
+            </div>
+
             <!-- BOTÕES -->
             <div class="d-flex justify-content-between mb-5">
                 <a href="{{ url_for('leads.listar_leads') }}"
@@ -225,7 +364,102 @@ document.getElementById('telefone').addEventListener('input', function () {
     this.value = v;
 });
 
-// Highlight visual nos radio de status ao clicar
+// ── Autocomplete de Pessoa ──
+let timerPessoa;
+const inputPessoa    = document.getElementById('pessoa_busca');
+const hiddenPessoa   = document.getElementById('pessoa_id_hidden');
+const sugestoesPessoa= document.getElementById('pessoa_sugestoes');
+
+inputPessoa.addEventListener('input', function () {
+    clearTimeout(timerPessoa);
+    const q = this.value.trim();
+    if (!q) { sugestoesPessoa.style.display = 'none'; hiddenPessoa.value = ''; return; }
+    timerPessoa = setTimeout(() => buscarPessoas(q), 280);
+});
+
+async function buscarPessoas(q) {
+    const res  = await fetch(`/admin/pessoas/buscar?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    if (!data.length) { sugestoesPessoa.style.display = 'none'; return; }
+    sugestoesPessoa.innerHTML = data.map(p => `
+        <button type="button" class="list-group-item list-group-item-action py-2"
+                onclick="selecionarPessoa(${p.id}, '${p.nome.replace(/'/g,"\\'")}')">
+            <span class="fw-semibold">${p.nome}</span>
+            <small class="text-muted ms-2">${p.tipo}${p.telefone ? ' · ' + p.telefone : ''}</small>
+        </button>`).join('');
+    sugestoesPessoa.style.display = 'block';
+}
+
+function selecionarPessoa(id, nome) {
+    hiddenPessoa.value    = id;
+    inputPessoa.value     = nome;
+    sugestoesPessoa.style.display = 'none';
+}
+
+function limparPessoa() {
+    hiddenPessoa.value = '';
+    inputPessoa.value  = '';
+    sugestoesPessoa.style.display = 'none';
+}
+
+document.addEventListener('click', e => {
+    if (!e.target.closest('#pessoa_busca') && !e.target.closest('#pessoa_sugestoes'))
+        sugestoesPessoa.style.display = 'none';
+});
+
+// ── Imóveis compatíveis ──
+{% if lead %}
+async function buscarCompativeis() {
+    const body = document.getElementById('imoveis-compat-body');
+    body.innerHTML = '<p class="text-muted small text-center py-3">Buscando...</p>';
+    try {
+        const res  = await fetch('/admin/leads/imoveis-compativeis/{{ lead.id }}');
+        const data = await res.json();
+        if (!data.length) {
+            body.innerHTML = '<p class="text-muted small text-center py-3 mb-0">Nenhum imóvel compatível encontrado com o perfil atual.</p>';
+            return;
+        }
+        body.innerHTML = '<div class="row g-2">' + data.map(im => `
+            <div class="col-sm-6 col-md-4">
+                <a href="/admin/imoveis/editar/${im.id}" target="_blank"
+                   class="text-decoration-none">
+                    <div class="border rounded-3 overflow-hidden h-100"
+                         style="transition:box-shadow .15s;"
+                         onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.12)'"
+                         onmouseout="this.style.boxShadow=''">
+                        ${im.foto
+                            ? `<img src="/static/${im.foto}" class="w-100"
+                                    style="height:90px;object-fit:cover;">`
+                            : `<div class="bg-light d-flex align-items-center justify-content-center"
+                                    style="height:90px;"><i class="bi bi-house text-muted fs-3"></i></div>`}
+                        <div class="p-2">
+                            <div class="fw-semibold text-dark" style="font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                ${im.titulo}
+                            </div>
+                            <div class="text-muted" style="font-size:.72rem;">
+                                ${im.bairro ? im.bairro + ' · ' : ''}${im.cidade}
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-1">
+                                <span class="badge bg-primary-subtle text-primary" style="font-size:.65rem;">
+                                    ${im.finalidade}
+                                </span>
+                                <span class="fw-bold text-success" style="font-size:.78rem;">
+                                    R$ ${im.preco.toLocaleString('pt-BR', {minimumFractionDigits:0})}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>`).join('') + '</div>';
+    } catch {
+        body.innerHTML = '<p class="text-danger small text-center py-3 mb-0">Erro ao buscar imóveis.</p>';
+    }
+}
+// Carrega automaticamente ao abrir a página
+buscarCompativeis();
+{% endif %}
+
+// ── Highlight visual nos radio de status ao clicar
 document.querySelectorAll('input[name="status"]').forEach(radio => {
     radio.addEventListener('change', function () {
         document.querySelectorAll('input[name="status"]').forEach(r => {

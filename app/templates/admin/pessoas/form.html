@@ -1,0 +1,322 @@
+{% extends 'admin/base.html' %}
+
+{% block head %}
+<style>
+    .form-card { background:#fff; border-radius:12px;
+                 box-shadow:0 2px 8px rgba(0,0,0,.06); padding:1.5rem 1.75rem; margin-bottom:1.25rem; }
+    .section-label { font-size:.68rem; font-weight:700; text-transform:uppercase;
+                     letter-spacing:1.5px; color:#0d6efd;
+                     border-bottom:2px solid #e8f0fe; padding-bottom:.5rem; margin-bottom:1.25rem; }
+
+    /* Tipo chips */
+    .tipo-opt { display:none; }
+    .tipo-label {
+        display:inline-flex; align-items:center; gap:.45rem;
+        padding:.45rem 1rem; border-radius:20px; font-size:.82rem; font-weight:600;
+        border:2px solid #dee2e6; cursor:pointer; transition:all .15s; color:#555;
+        user-select:none;
+    }
+    .tipo-opt:checked + .tipo-label {
+        border-color:#0d6efd; background:#e8f0fe; color:#0d6efd;
+    }
+
+    /* Telefones */
+    .tel-row { display:flex; gap:.5rem; align-items:center; margin-bottom:.5rem; }
+    .tel-row .tel-tipo  { width:130px; flex-shrink:0; }
+    .tel-row .tel-num   { flex:1; }
+    .tel-row .btn-rm    { flex-shrink:0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-4">
+    <a href="{{ url_for('pessoas.listar_pessoas') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+        <h2 class="h3 fw-bold mb-0">{{ 'Editar Pessoa' if pessoa else 'Nova Pessoa' }}</h2>
+        <small class="text-muted">{{ pessoa.nome if pessoa else 'Preencha os dados do contato' }}</small>
+    </div>
+</div>
+
+<form method="POST">
+<div class="row g-4">
+
+    {# ── Dados principais ── #}
+    <div class="col-lg-8">
+        <div class="form-card">
+            <div class="section-label"><i class="bi bi-person me-1"></i> Dados principais</div>
+
+            {# Tipo #}
+            <div class="mb-4">
+                <label class="form-label fw-bold small d-block mb-2">Perfil</label>
+                <div class="d-flex flex-wrap gap-2">
+                    {% for t in tipos %}
+                    <input type="radio" name="tipo" id="tipo_{{ t }}" value="{{ t }}"
+                           class="tipo-opt"
+                           {{ 'checked' if (pessoa and pessoa.tipo == t) or (not pessoa and t == 'Cliente') }}>
+                    <label class="tipo-label" for="tipo_{{ t }}">{{ t }}</label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {# Nome #}
+            <div class="mb-3">
+                <label class="form-label fw-bold small">Nome completo *</label>
+                <input type="text" name="nome" class="form-control"
+                       value="{{ pessoa.nome if pessoa else '' }}"
+                       placeholder="Ex: Maria Fernanda Santos" required autofocus>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small">Documento <span class="text-muted fw-normal">(CPF / CNPJ)</span></label>
+                    <input type="text" name="documento" id="documento" class="form-control"
+                           value="{{ pessoa.documento if pessoa else '' }}"
+                           placeholder="000.000.000-00" maxlength="18">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small">Data de nascimento</label>
+                    <input type="date" name="data_nascimento" class="form-control"
+                           value="{{ pessoa.data_nascimento.isoformat() if pessoa and pessoa.data_nascimento else '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small">E-mail</label>
+                    <input type="email" name="email" class="form-control"
+                           value="{{ pessoa.email if pessoa else '' }}"
+                           placeholder="exemplo@email.com">
+                </div>
+            </div>
+        </div>
+
+        {# ── Endereço ── #}
+        <div class="form-card">
+            <div class="section-label"><i class="bi bi-geo-alt me-1"></i> Endereço</div>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold small">CEP</label>
+                    <input type="text" name="cep" id="cep" class="form-control"
+                           value="{{ pessoa.cep if pessoa else '' }}"
+                           placeholder="00000-000" maxlength="9">
+                </div>
+                <div class="col-md-7">
+                    <label class="form-label fw-bold small">Logradouro</label>
+                    <input type="text" name="logradouro" id="logradouro" class="form-control"
+                           value="{{ pessoa.logradouro if pessoa else '' }}"
+                           placeholder="Rua, Avenida, etc.">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold small">Número</label>
+                    <input type="text" name="numero_end" class="form-control"
+                           value="{{ pessoa.numero if pessoa else '' }}"
+                           placeholder="123">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small">Complemento</label>
+                    <input type="text" name="complemento" class="form-control"
+                           value="{{ pessoa.complemento if pessoa else '' }}"
+                           placeholder="Apto, Bloco…">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small">Bairro</label>
+                    <input type="text" name="bairro" id="bairro" class="form-control"
+                           value="{{ pessoa.bairro if pessoa else '' }}"
+                           placeholder="Bairro">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold small">Cidade</label>
+                    <input type="text" name="cidade" id="cidade" class="form-control"
+                           value="{{ pessoa.cidade if pessoa else '' }}"
+                           placeholder="Cidade">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label fw-bold small">UF</label>
+                    <input type="text" name="estado" id="estado" class="form-control"
+                           value="{{ pessoa.estado if pessoa else '' }}"
+                           placeholder="SP" maxlength="2"
+                           style="text-transform:uppercase;">
+                </div>
+            </div>
+        </div>
+
+        {# ── Telefones ── #}
+        <div class="form-card">
+            <div class="section-label"><i class="bi bi-telephone me-1"></i> Telefones</div>
+
+            <div id="telefones-lista">
+                {% if pessoa and pessoa.telefones %}
+                    {% for tel in pessoa.telefones %}
+                    <div class="tel-row">
+                        <select name="tel_tipo[]" class="form-select form-select-sm tel-tipo">
+                            {% for tt in tipos_tel %}
+                            <option value="{{ tt }}" {{ 'selected' if tel.tipo == tt }}>{{ tt }}</option>
+                            {% endfor %}
+                        </select>
+                        <input type="text" name="tel_numero[]" class="form-control form-control-sm tel-num tel-mask"
+                               value="{{ tel.numero }}" placeholder="(11) 99999-9999">
+                        <button type="button" class="btn btn-outline-danger btn-sm btn-rm"
+                                onclick="removerTelefone(this)">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    {# Linha inicial vazia #}
+                    <div class="tel-row">
+                        <select name="tel_tipo[]" class="form-select form-select-sm tel-tipo">
+                            {% for tt in tipos_tel %}
+                            <option value="{{ tt }}">{{ tt }}</option>
+                            {% endfor %}
+                        </select>
+                        <input type="text" name="tel_numero[]"
+                               class="form-control form-control-sm tel-num tel-mask"
+                               placeholder="(11) 99999-9999">
+                        <button type="button" class="btn btn-outline-danger btn-sm btn-rm"
+                                onclick="removerTelefone(this)">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+
+            <button type="button" onclick="adicionarTelefone()"
+                    class="btn btn-outline-secondary btn-sm mt-2">
+                <i class="bi bi-plus-lg me-1"></i> Adicionar telefone
+            </button>
+        </div>
+
+        {# ── Observações ── #}
+        <div class="form-card">
+            <div class="section-label"><i class="bi bi-card-text me-1"></i> Observações</div>
+            <textarea name="observacoes" class="form-control" rows="4"
+                      placeholder="Anotações internas, preferências, histórico de atendimento…">{{ pessoa.observacoes if pessoa else '' }}</textarea>
+        </div>
+    </div>
+
+    {# ── Painel lateral ── #}
+    <div class="col-lg-4">
+        {% if pessoa %}
+        <div class="form-card" style="background:#f8f9ff;border:1px solid #e0e7ff;box-shadow:none;">
+            <div class="section-label"><i class="bi bi-info-circle me-1"></i> Informações</div>
+            <div class="small text-muted mb-1">Cadastrado em</div>
+            <div class="fw-bold mb-3">{{ pessoa.data_cadastro.strftime('%d/%m/%Y') if pessoa.data_cadastro else '—' }}</div>
+            <div class="small text-muted mb-1">Leads vinculados</div>
+            <div class="fw-bold">{{ pessoa.leads | length }}</div>
+        </div>
+        {% endif %}
+
+        <div class="form-card" style="background:#fffbeb;border:1px solid #fde68a;box-shadow:none;">
+            <div class="small fw-bold mb-1"><i class="bi bi-shield-lock me-1 text-warning"></i> LGPD</div>
+            <p class="small text-muted mb-0">
+                Documente apenas os dados necessários para o atendimento.
+                O consentimento do titular deve ser obtido antes do cadastro.
+            </p>
+        </div>
+    </div>
+
+</div>
+
+<div class="d-flex justify-content-between align-items-center mt-2">
+    <a href="{{ url_for('pessoas.ver_pessoa', id=pessoa.id) if pessoa else url_for('pessoas.listar_pessoas') }}"
+       class="btn btn-outline-secondary px-4">Cancelar</a>
+    <button type="submit" class="btn btn-primary px-5 shadow-sm">
+        <i class="bi bi-check-lg me-1"></i>
+        {{ 'Salvar Alterações' if pessoa else 'Cadastrar Pessoa' }}
+    </button>
+</div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Tipos de telefone para novas linhas ──
+const TIPOS_TEL = {{ tipos_tel | tojson }};
+
+function tipoOptions(selecionado) {
+    return TIPOS_TEL.map(t =>
+        `<option value="${t}"${t === selecionado ? ' selected' : ''}>${t}</option>`
+    ).join('');
+}
+
+function adicionarTelefone() {
+    const lista = document.getElementById('telefones-lista');
+    const div   = document.createElement('div');
+    div.className = 'tel-row';
+    div.innerHTML = `
+        <select name="tel_tipo[]" class="form-select form-select-sm tel-tipo">${tipoOptions('Celular')}</select>
+        <input type="text" name="tel_numero[]"
+               class="form-control form-control-sm tel-num tel-mask"
+               placeholder="(11) 99999-9999">
+        <button type="button" class="btn btn-outline-danger btn-sm btn-rm"
+                onclick="removerTelefone(this)">
+            <i class="bi bi-trash3"></i>
+        </button>`;
+    lista.appendChild(div);
+    aplicarMascara(div.querySelector('.tel-mask'));
+    div.querySelector('input').focus();
+}
+
+function removerTelefone(btn) {
+    const lista = document.getElementById('telefones-lista');
+    if (lista.children.length <= 1) {
+        // Limpa o campo em vez de remover a última linha
+        btn.closest('.tel-row').querySelector('input').value = '';
+        return;
+    }
+    btn.closest('.tel-row').remove();
+}
+
+// ── Máscara de telefone ──
+function aplicarMascara(input) {
+    input.addEventListener('input', function () {
+        let v = this.value.replace(/\D/g, '').slice(0, 11);
+        if (v.length > 10) v = v.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
+        else if (v.length > 6) v = v.replace(/^(\d{2})(\d{4})(\d{0,4})$/, '($1) $2-$3');
+        else if (v.length > 2) v = v.replace(/^(\d{2})(\d{0,5})$/, '($1) $2');
+        else if (v.length > 0) v = `(${v}`;
+        this.value = v;
+    });
+}
+document.querySelectorAll('.tel-mask').forEach(aplicarMascara);
+
+// ── Máscara CEP e busca ViaCEP ──
+document.getElementById('cep')?.addEventListener('blur', async function () {
+    const cep = this.value.replace(/\D/g, '');
+    if (cep.length !== 8) return;
+    try {
+        const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        const d = await r.json();
+        if (d.erro) return;
+        document.getElementById('logradouro').value = d.logradouro || '';
+        document.getElementById('bairro').value     = d.bairro     || '';
+        document.getElementById('cidade').value     = d.localidade || '';
+        document.getElementById('estado').value     = d.uf         || '';
+    } catch {}
+});
+document.getElementById('cep')?.addEventListener('input', function () {
+    let v = this.value.replace(/\D/g, '').slice(0, 8);
+    if (v.length > 5) v = v.replace(/^(\d{5})(\d)/, '$1-$2');
+    this.value = v;
+});
+document.getElementById('estado')?.addEventListener('input', function () {
+    this.value = this.value.toUpperCase().slice(0, 2);
+});
+
+// ── Máscara CPF/CNPJ ──
+document.getElementById('documento')?.addEventListener('input', function () {
+    let v = this.value.replace(/\D/g, '');
+    if (v.length <= 11) {
+        v = v.replace(/^(\d{3})(\d)/, '$1.$2')
+             .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+             .replace(/\.(\d{3})(\d)/, '.$1-$2');
+    } else {
+        v = v.slice(0, 14)
+             .replace(/^(\d{2})(\d)/, '$1.$2')
+             .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+             .replace(/\.(\d{3})(\d)/, '.$1/$2')
+             .replace(/(\d{4})(\d)/, '$1-$2');
+    }
+    this.value = v;
+});
+</script>
+{% endblock %}

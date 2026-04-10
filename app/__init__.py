@@ -1,10 +1,12 @@
 from flask import Flask, g, request, redirect
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
+from flask_mail import Mail
 import os
 
 db = SQLAlchemy()
 login_manager = LoginManager()
+mail = Mail()
 
 
 def _resolver_imobiliaria(host, app):
@@ -56,6 +58,7 @@ def create_app():
     db.init_app(app)
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
+    mail.init_app(app)
 
     # ── Registro de Blueprints ─────────────────────────────────────
     from .auth.routes       import auth_bp
@@ -64,10 +67,12 @@ def create_app():
     from .leads.routes      import leads_bp
     from .api.routes        import api_bp
     from .superadmin.routes import superadmin_bp
+    from .pessoas.routes    import pessoas_bp
 
     app.register_blueprint(auth_bp,       url_prefix='/auth')
     app.register_blueprint(admin_bp,      url_prefix='/admin')
     app.register_blueprint(leads_bp,      url_prefix='/admin/leads')
+    app.register_blueprint(pessoas_bp,    url_prefix='/admin/pessoas')
     app.register_blueprint(api_bp,        url_prefix='/api')
     app.register_blueprint(superadmin_bp, url_prefix='/superadmin')
     app.register_blueprint(site_bp)
@@ -80,19 +85,26 @@ def create_app():
         host = request.host.split(':')[0].lower()
         g.imobiliaria = _resolver_imobiliaria(host, app)
 
-    # ── Context processor: menu dinâmico em todos os templates ─────
+    # ── Context processor: menu dinâmico + badge de leads novos ────
     @app.context_processor
-    def injetar_menu():
+    def injetar_contexto():
         if not getattr(g, 'imobiliaria', None):
-            return {'menu_links': [], 'menu_paginas': []}
-        from .models import MenuLink, PaginaSite
+            return {'menu_links': [], 'menu_paginas': [], 'leads_novos_count': 0}
+        from .models import MenuLink, PaginaSite, Lead
         menu_links = MenuLink.query.filter_by(
             imobiliaria_id=g.imobiliaria.id, ativo=True
         ).order_by(MenuLink.ordem).all()
         menu_paginas = PaginaSite.query.filter_by(
             imobiliaria_id=g.imobiliaria.id, ativo=True, no_menu=True
         ).order_by(PaginaSite.ordem).all()
-        return {'menu_links': menu_links, 'menu_paginas': menu_paginas}
+        leads_novos_count = Lead.query.filter_by(
+            imobiliaria_id=g.imobiliaria.id, status='Novo'
+        ).count()
+        return {
+            'menu_links': menu_links,
+            'menu_paginas': menu_paginas,
+            'leads_novos_count': leads_novos_count,
+        }
 
     return app
 

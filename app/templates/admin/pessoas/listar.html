@@ -1,0 +1,174 @@
+{% extends 'admin/base.html' %}
+{% from '_macros.html' import paginacao %}
+
+{% block head %}
+<style>
+    .tipo-badge {
+        font-size: .7rem; font-weight: 700; padding: .2rem .65rem;
+        border-radius: 20px; white-space: nowrap;
+    }
+    .tipo-Cliente      { background:#dbeafe; color:#1d4ed8; }
+    .tipo-Corretor     { background:#d1fae5; color:#065f46; }
+    .tipo-Proprietário { background:#fef3c7; color:#92400e; }
+    .tipo-Locatário    { background:#ede9fe; color:#5b21b6; }
+    .tipo-Interessado  { background:#fce7f3; color:#9d174d; }
+    .tipo-Outro        { background:#f3f4f6; color:#374151; }
+
+    .filter-chip {
+        display: inline-flex; align-items: center; gap: .4rem;
+        padding: .3rem .9rem; border-radius: 20px; font-size: .8rem;
+        font-weight: 600; cursor: pointer; text-decoration: none;
+        border: 2px solid transparent; transition: all .15s;
+        background: #f1f5f9; color: #475569;
+    }
+    .filter-chip:hover   { background: #e2e8f0; color: #1e293b; }
+    .filter-chip.ativo   { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
+    .filter-chip .cnt    { background: rgba(255,255,255,.3); border-radius: 10px;
+                           padding: 0 .45rem; font-size: .7rem; }
+    .filter-chip:not(.ativo) .cnt { background: rgba(0,0,0,.08); }
+
+    .pessoas-table th { font-size:.72rem; text-transform:uppercase;
+                        letter-spacing:.8px; color:#888; font-weight:700; }
+    .pessoas-table td { vertical-align:middle; font-size:.88rem; }
+    .pessoa-nome      { font-weight:600; color:#212529; }
+    .pessoa-doc       { font-size:.75rem; color:#999; font-family:monospace; }
+    .tel-badge        { font-size:.72rem; background:#f0f4ff; color:#3b5998;
+                        border-radius:6px; padding:.1rem .5rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="h3 fw-bold mb-0">Pessoas</h2>
+        <small class="text-muted">Clientes, corretores, proprietários e contatos da imobiliária</small>
+    </div>
+    <a href="{{ url_for('pessoas.nova_pessoa') }}" class="btn btn-primary shadow-sm px-4">
+        <i class="bi bi-person-plus me-1"></i> Nova Pessoa
+    </a>
+</div>
+
+{# ── Filtros por tipo ── #}
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <a href="{{ url_for('pessoas.listar_pessoas', busca=busca) }}"
+       class="filter-chip {{ 'ativo' if not tipo_f }}">
+        Todos
+        <span class="cnt">{{ contagem.values() | sum }}</span>
+    </a>
+    {% for t in tipos %}
+    <a href="{{ url_for('pessoas.listar_pessoas', tipo=t, busca=busca) }}"
+       class="filter-chip {{ 'ativo' if tipo_f == t }}">
+        {{ t }}
+        <span class="cnt">{{ contagem[t] }}</span>
+    </a>
+    {% endfor %}
+</div>
+
+{# ── Busca ── #}
+<form method="GET" class="mb-3">
+    {% if tipo_f %}<input type="hidden" name="tipo" value="{{ tipo_f }}">{% endif %}
+    <div class="input-group" style="max-width:420px;">
+        <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+        <input type="text" name="busca" class="form-control border-start-0"
+               placeholder="Buscar por nome, documento ou e-mail…"
+               value="{{ busca }}">
+        {% if busca %}
+        <a href="{{ url_for('pessoas.listar_pessoas', tipo=tipo_f) }}"
+           class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i></a>
+        {% endif %}
+    </div>
+</form>
+
+{# ── Tabela ── #}
+<div class="card">
+    <div class="card-body p-0">
+        {% if pessoas %}
+        <div class="table-responsive">
+            <table class="table pessoas-table mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Nome</th>
+                        <th>Tipo</th>
+                        <th>Telefone</th>
+                        <th>E-mail</th>
+                        <th class="text-center">Leads</th>
+                        <th class="text-end pe-4">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for p in pessoas %}
+                <tr>
+                    <td class="ps-4">
+                        <div class="pessoa-nome">{{ p.nome }}</div>
+                        {% if p.documento %}
+                        <div class="pessoa-doc">{{ p.documento }}</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="tipo-badge tipo-{{ p.tipo }}">{{ p.tipo }}</span>
+                    </td>
+                    <td>
+                        {% for tel in p.telefones[:2] %}
+                        <span class="tel-badge me-1">{{ tel.numero }}</span>
+                        {% endfor %}
+                        {% if p.telefones | length == 0 %}
+                        <span class="text-muted small">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted small">{{ p.email or '—' }}</td>
+                    <td class="text-center">
+                        {% set n_leads = p.leads | length %}
+                        {% if n_leads %}
+                        <span class="badge bg-primary-subtle text-primary">{{ n_leads }}</span>
+                        {% else %}
+                        <span class="text-muted small">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end pe-4">
+                        <div class="d-flex gap-1 justify-content-end">
+                            <a href="{{ url_for('pessoas.ver_pessoa', id=p.id) }}"
+                               class="btn btn-outline-secondary btn-sm" title="Ver detalhes">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{{ url_for('pessoas.editar_pessoa', id=p.id) }}"
+                               class="btn btn-outline-primary btn-sm" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <form method="POST"
+                                  action="{{ url_for('pessoas.excluir_pessoa', id=p.id) }}"
+                                  onsubmit="return confirm('Excluir \'{{ p.nome | e }}\'? Os leads vinculados serão desvinculados.')">
+                                <button type="submit" class="btn btn-outline-danger btn-sm" title="Excluir">
+                                    <i class="bi bi-trash3"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {{ paginacao(pagination) }}
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-people fs-1 opacity-25 d-block mb-2"></i>
+            {% if busca or tipo_f %}
+            Nenhuma pessoa encontrada para o filtro aplicado.
+            <div class="mt-2">
+                <a href="{{ url_for('pessoas.listar_pessoas') }}" class="btn btn-outline-secondary btn-sm">
+                    Limpar filtros
+                </a>
+            </div>
+            {% else %}
+            Nenhuma pessoa cadastrada ainda.
+            <div class="mt-3">
+                <a href="{{ url_for('pessoas.nova_pessoa') }}" class="btn btn-primary btn-sm px-4">
+                    <i class="bi bi-person-plus me-1"></i> Cadastrar primeira pessoa
+                </a>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

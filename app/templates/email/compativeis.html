@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Imóveis compatíveis com seu perfil</title>
+</head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 16px;">
+  <tr><td align="center">
+
+    <!-- Container principal -->
+    <table width="620" cellpadding="0" cellspacing="0" style="max-width:620px;width:100%;">
+
+      <!-- Header -->
+      <tr>
+        <td style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);
+                   border-radius:16px 16px 0 0;padding:32px 36px;text-align:center;">
+          {% if imobiliaria.logo_url %}
+          <img src="{{ request.host_url }}static/{{ imobiliaria.logo_url }}"
+               alt="{{ imobiliaria.nome }}" height="48"
+               style="max-height:48px;margin-bottom:16px;display:block;margin-left:auto;margin-right:auto;">
+          {% endif %}
+          <div style="font-size:2rem;margin-bottom:8px;">&#11088;</div>
+          <h1 style="color:#fff;font-size:1.35rem;font-weight:800;margin:0 0 6px;">
+            Encontramos imóveis para você!
+          </h1>
+          <p style="color:rgba(255,255,255,.6);font-size:.88rem;margin:0;">
+            {{ imobiliaria.nome }} selecionou {{ imoveis|length }} imóve{{ 'l' if imoveis|length == 1 else 'is' }}
+            que combinam com o seu perfil de busca.
+          </p>
+        </td>
+      </tr>
+
+      <!-- Saudação -->
+      <tr>
+        <td style="background:#fff;padding:28px 36px 8px;">
+          <p style="font-size:.95rem;color:#1e293b;margin:0 0 4px;">
+            Olá, <strong>{{ lead.nome }}</strong>!
+          </p>
+          <p style="font-size:.88rem;color:#64748b;margin:0;">
+            Com base no seu perfil de busca, separamos os imóveis abaixo. Entre em contato conosco
+            para agendar uma visita ou tirar dúvidas.
+          </p>
+        </td>
+      </tr>
+
+      <!-- Cards de imóveis -->
+      {% for im in imoveis %}
+      <tr>
+        <td style="background:#fff;padding:16px 36px;">
+          <table width="100%" cellpadding="0" cellspacing="0"
+                 style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
+            <tr>
+              <!-- Foto -->
+              {% set foto = im.fotos | selectattr('principal') | first or (im.fotos | first if im.fotos else none) %}
+              {% if foto %}
+              <td width="130" valign="top"
+                  style="background:#f0f2f5;width:130px;min-width:130px;">
+                <img src="{{ request.host_url }}static/{{ foto.url }}"
+                     alt="{{ im.titulo }}"
+                     width="130" height="100"
+                     style="display:block;width:130px;height:100px;object-fit:cover;">
+              </td>
+              {% else %}
+              <td width="130" valign="middle" align="center"
+                  style="background:#f0f2f5;width:130px;min-width:130px;height:100px;
+                         font-size:2rem;color:#cbd5e1;">
+                &#127968;
+              </td>
+              {% endif %}
+              <!-- Dados -->
+              <td valign="top" style="padding:14px 16px;">
+                <p style="font-size:.9rem;font-weight:700;color:#1e293b;margin:0 0 3px;
+                           white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px;">
+                  {{ im.titulo }}
+                </p>
+                <p style="font-size:.78rem;color:#64748b;margin:0 0 6px;">
+                  {% if im.bairro %}{{ im.bairro }} &middot; {% endif %}
+                  {{ im.cidade or '' }}{% if im.estado %} / {{ im.estado }}{% endif %}
+                </p>
+                <p style="font-size:1rem;font-weight:800;color:#16a34a;margin:0 0 8px;">
+                  {{ im.preco | moeda }}
+                </p>
+                <p style="font-size:.76rem;color:#64748b;margin:0;">
+                  {% if im.quartos %}&#127968; {{ im.quartos }} dorm.&nbsp;&nbsp;{% endif %}
+                  {% if im.suites %}&#11088; {{ im.suites }} suíte{% if im.suites > 1 %}s{% endif %}&nbsp;&nbsp;{% endif %}
+                  {% if im.vagas %}&#128663; {{ im.vagas }} vaga{% if im.vagas > 1 %}s{% endif %}&nbsp;&nbsp;{% endif %}
+                  {% if im.area_util %}&#9632; {{ im.area_util | int }} m²{% endif %}
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      {% endfor %}
+
+      <!-- CTA -->
+      <tr>
+        <td style="background:#fff;padding:20px 36px 32px;text-align:center;">
+          {% if imobiliaria.whatsapp %}
+          {% set tel_limpo = imobiliaria.whatsapp | replace('(','') | replace(')','') | replace(' ','') | replace('-','') %}
+          <a href="https://wa.me/55{{ tel_limpo }}"
+             style="display:inline-block;background:#16a34a;color:#fff;font-weight:700;
+                    font-size:.88rem;padding:12px 28px;border-radius:8px;text-decoration:none;">
+            &#128172; Falar pelo WhatsApp
+          </a>
+          {% endif %}
+          {% if imobiliaria.email_exibicao or imobiliaria.email_contato %}
+          <p style="font-size:.78rem;color:#94a3b8;margin:16px 0 0;">
+            Ou responda este e-mail para falar com nossa equipe.
+          </p>
+          {% endif %}
+        </td>
+      </tr>
+
+      <!-- Rodapé -->
+      <tr>
+        <td style="background:#f8fafc;border-top:1px solid #e2e8f0;
+                   border-radius:0 0 16px 16px;padding:20px 36px;text-align:center;">
+          <p style="font-size:.75rem;color:#94a3b8;margin:0 0 4px;">
+            <strong style="color:#64748b;">{{ imobiliaria.nome }}</strong>
+            {% if imobiliaria.telefone %}&nbsp;&middot;&nbsp;{{ imobiliaria.telefone }}{% endif %}
+            {% if imobiliaria.email_exibicao %}&nbsp;&middot;&nbsp;{{ imobiliaria.email_exibicao }}{% endif %}
+          </p>
+          <p style="font-size:.72rem;color:#cbd5e1;margin:0;">
+            Você recebeu este e-mail porque demonstrou interesse em imóveis.
+          </p>
+        </td>
+      </tr>
+
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>

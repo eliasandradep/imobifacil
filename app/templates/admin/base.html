@@ -135,8 +135,13 @@
         <!-- ── CRM ── -->
         <div class="nav-group-label">CRM</div>
 
+        <a href="{{ url_for('pessoas.listar_pessoas') }}"
+           class="nav-link-side {% if 'pessoas.' in request.endpoint %}active{% endif %}">
+            <i class="bi bi-people"></i> Pessoas
+        </a>
+
         <a href="{{ url_for('leads.listar_leads') }}"
-           class="nav-link-side {% if 'leads.' in request.endpoint %}active{% endif %}">
+           class="nav-link-side {% if request.endpoint == 'leads.listar_leads' or request.endpoint in ['leads.novo_lead','leads.editar_lead'] %}active{% endif %}">
             <i class="bi bi-person-lines-fill"></i> Leads
             {# Badge de novos leads #}
             {% if g.imobiliaria %}
@@ -146,6 +151,11 @@
                 <span class="badge bg-danger badge-nav">{{ leads_novos_count }}</span>
                 {% endif %}
             {% endif %}
+        </a>
+
+        <a href="{{ url_for('leads.pagina_compativeis') }}"
+           class="nav-link-side {% if request.endpoint in ['leads.pagina_compativeis','leads.atualizar_compativel','leads.recalcular_compativeis','leads.enviar_emails_compativeis','leads.enviar_email_lead_compativel'] %}active{% endif %}">
+            <i class="bi bi-stars"></i> Imóveis Compatíveis
         </a>
 
         <!-- ── Site ── -->

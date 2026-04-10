@@ -41,6 +41,7 @@ class Imobiliaria(db.Model):
                                    order_by='PaginaSite.ordem')
     menu_links   = db.relationship('MenuLink',   backref='imobiliaria', lazy=True,
                                    order_by='MenuLink.ordem')
+    pessoas      = db.relationship('Pessoa',     backref='imobiliaria', lazy=True)
 
 
 class TipoImovel(db.Model):
@@ -121,10 +122,49 @@ class Foto(db.Model):
     data_upload = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+TIPOS_PESSOA    = ['Cliente', 'Corretor', 'Proprietário', 'Locatário', 'Interessado', 'Outro']
+TIPOS_TELEFONE  = ['Celular', 'WhatsApp', 'Fixo', 'Comercial']
+
+
+class Pessoa(db.Model):
+    __tablename__ = 'pessoas'
+    id             = db.Column(db.Integer, primary_key=True)
+    imobiliaria_id = db.Column(db.Integer, db.ForeignKey('imobiliarias.id'), nullable=False)
+    tipo           = db.Column(db.String(20), default='Cliente')
+    nome           = db.Column(db.String(150), nullable=False)
+    documento      = db.Column(db.String(20))
+    email          = db.Column(db.String(120))
+    data_nascimento= db.Column(db.Date)
+    # Endereço
+    cep            = db.Column(db.String(10))
+    logradouro     = db.Column(db.String(200))
+    numero         = db.Column(db.String(10))
+    complemento    = db.Column(db.String(60))
+    bairro         = db.Column(db.String(100))
+    cidade         = db.Column(db.String(100))
+    estado         = db.Column(db.String(2))
+    observacoes    = db.Column(db.Text)
+    data_cadastro  = db.Column(db.DateTime, default=datetime.utcnow)
+
+    telefones = db.relationship('TelefonePessoa', backref='pessoa', lazy=True,
+                                cascade='all, delete-orphan', order_by='TelefonePessoa.id')
+    leads     = db.relationship('Lead', backref='pessoa', lazy=True,
+                                foreign_keys='Lead.pessoa_id')
+
+
+class TelefonePessoa(db.Model):
+    __tablename__ = 'telefones_pessoa'
+    id        = db.Column(db.Integer, primary_key=True)
+    pessoa_id = db.Column(db.Integer, db.ForeignKey('pessoas.id'), nullable=False)
+    numero    = db.Column(db.String(20), nullable=False)
+    tipo      = db.Column(db.String(20), default='Celular')  # Celular|WhatsApp|Fixo|Comercial
+
+
 class Lead(db.Model):
     __tablename__ = 'leads'
     id             = db.Column(db.Integer, primary_key=True)
     imobiliaria_id = db.Column(db.Integer, db.ForeignKey('imobiliarias.id'), nullable=False)
+    pessoa_id      = db.Column(db.Integer, db.ForeignKey('pessoas.id'), nullable=True)
 
     # Dados do contato
     nome     = db.Column(db.String(100), nullable=False)
@@ -139,6 +179,14 @@ class Lead(db.Model):
 
     # Conteúdo
     mensagem = db.Column(db.Text)
+
+    # Perfil de busca (interesse do lead)
+    interesse_finalidade  = db.Column(db.String(30))   # Compra | Locação | Ambos
+    interesse_preco_min   = db.Column(db.Numeric(14, 2))
+    interesse_preco_max   = db.Column(db.Numeric(14, 2))
+    interesse_quartos_min = db.Column(db.Integer)
+    interesse_cidade      = db.Column(db.String(100))
+    interesse_bairros     = db.Column(db.String(500))
 
     data_contato = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -189,6 +237,26 @@ class PaginaSite(db.Model):
     ativo          = db.Column(db.Boolean, default=True)
     no_menu        = db.Column(db.Boolean, default=False)
     ordem          = db.Column(db.Integer, default=0)
+
+
+class ImoveCompativel(db.Model):
+    """Relação entre um Lead e um Imóvel — resultado do cruzamento de perfil de busca."""
+    __tablename__ = 'imoveis_compativeis'
+    id             = db.Column(db.Integer, primary_key=True)
+    imobiliaria_id = db.Column(db.Integer, db.ForeignKey('imobiliarias.id'), nullable=False)
+    lead_id        = db.Column(db.Integer, db.ForeignKey('leads.id'),        nullable=False)
+    imovel_id      = db.Column(db.Integer, db.ForeignKey('imoveis.id'),      nullable=False)
+    # 'compativel' | 'favorito' | 'descartado'
+    status         = db.Column(db.String(20), default='compativel', nullable=False)
+    email_enviado  = db.Column(db.Boolean, default=False, nullable=False)
+    criado_em      = db.Column(db.DateTime, default=datetime.utcnow)
+
+    lead   = db.relationship('Lead',   backref='compativeis', lazy=True)
+    imovel = db.relationship('Imovel', backref='compativeis', lazy=True)
+
+    __table_args__ = (
+        db.UniqueConstraint('lead_id', 'imovel_id', name='uq_lead_imovel'),
+    )
 
 
 class MenuLink(db.Model):

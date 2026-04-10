@@ -1,4 +1,4 @@
-import uuid, re
+import uuid, re, os
 from functools import wraps
 from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app
 from flask_login import login_user, logout_user, current_user
@@ -306,6 +306,167 @@ def excluir_usuario_imobiliaria(imob_id, user_id):
     db.session.commit()
     flash(f'Usuário "{nome}" excluído.', 'success')
     return redirect(url_for('superadmin.usuarios_imobiliaria', id=imob_id))
+
+
+# ── CONFIGURAÇÕES DA PLATAFORMA (.env) ───────────────────────────────────────
+
+def _env_path():
+    return os.path.join(current_app.root_path, '..', '.env')
+
+
+def _ler_env():
+    """Lê o .env e retorna dict {chave: valor} e lista de linhas originais."""
+    path = _env_path()
+    linhas = []
+    valores = {}
+    if os.path.exists(path):
+        with open(path, 'r', encoding='utf-8') as f:
+            linhas = f.readlines()
+        for linha in linhas:
+            linha_strip = linha.strip()
+            if linha_strip and not linha_strip.startswith('#'):
+                if '=' in linha_strip:
+                    k, _, v = linha_strip.partition('=')
+                    valores[k.strip()] = v.strip()
+    return valores, linhas
+
+
+def _salvar_env(novos_valores: dict):
+    """
+    Atualiza ou acrescenta chaves no .env, preservando comentários e ordem.
+    Chaves com valor None ou '' são escritas como KEY= (preservam a chave).
+    """
+    path = _env_path()
+    _, linhas = _ler_env()
+
+    pendentes = set(novos_valores.keys())
+
+    novas_linhas = []
+    for linha in linhas:
+        stripped = linha.strip()
+        if stripped and not stripped.startswith('#') and '=' in stripped:
+            k = stripped.split('=', 1)[0].strip()
+            if k in novos_valores:
+                v = novos_valores[k] or ''
+                novas_linhas.append(f'{k}={v}\n')
+                pendentes.discard(k)
+                continue
+        novas_linhas.append(linha)
+
+    # Acrescenta chaves novas que não existiam no arquivo
+    if pendentes:
+        novas_linhas.append('\n')
+        for k in sorted(pendentes):
+            v = novos_valores[k] or ''
+            novas_linhas.append(f'{k}={v}\n')
+
+    with open(path, 'w', encoding='utf-8') as f:
+        f.writelines(novas_linhas)
+
+
+@superadmin_bp.route('/configuracoes', methods=['GET', 'POST'])
+@superadmin_required
+def configuracoes_plataforma():
+    env_path = _env_path()
+    env_existe = os.path.exists(env_path)
+    valores, _ = _ler_env()
+
+    if request.method == 'POST':
+        acao = request.form.get('_acao', 'salvar')
+
+        if acao == 'testar_smtp':
+            _testar_smtp(valores)
+            return redirect(url_for('superadmin.configuracoes_plataforma'))
+
+        # Monta dict com todos os campos do formulário
+        campos = {
+            # Geral
+            'SECRET_KEY':    request.form.get('SECRET_KEY', '').strip(),
+            'DATABASE_URL':  request.form.get('DATABASE_URL', '').strip(),
+            'FLASK_DEBUG':   request.form.get('FLASK_DEBUG', 'false'),
+            # Plataforma / Domínios
+            'BASE_DOMAIN':   request.form.get('BASE_DOMAIN', '').strip().lower().lstrip('.'),
+            'FLASK_HOST':    request.form.get('FLASK_HOST', '').strip(),
+            'FLASK_PORT':    request.form.get('FLASK_PORT', '').strip(),
+            # SMTP
+            'MAIL_SERVER':         request.form.get('MAIL_SERVER', '').strip(),
+            'MAIL_PORT':           request.form.get('MAIL_PORT', '587').strip(),
+            'MAIL_USE_TLS':        request.form.get('MAIL_USE_TLS', 'false'),
+            'MAIL_USE_SSL':        request.form.get('MAIL_USE_SSL', 'false'),
+            'MAIL_USERNAME':       request.form.get('MAIL_USERNAME', '').strip(),
+            'MAIL_DEFAULT_SENDER': request.form.get('MAIL_DEFAULT_SENDER', '').strip(),
+        }
+
+        # Senha SMTP: só sobrescreve se o usuário digitou algo
+        nova_senha = request.form.get('MAIL_PASSWORD', '').strip()
+        if nova_senha:
+            campos['MAIL_PASSWORD'] = nova_senha
+        elif 'MAIL_PASSWORD' in valores:
+            campos['MAIL_PASSWORD'] = valores['MAIL_PASSWORD']  # mantém a atual
+
+        # SECRET_KEY: não pode ficar vazio
+        if not campos['SECRET_KEY']:
+            flash('SECRET_KEY não pode ser vazia.', 'danger')
+            return redirect(url_for('superadmin.configuracoes_plataforma'))
+
+        _salvar_env(campos)
+
+        # Atualiza a config em memória para refletir imediatamente sem restart
+        current_app.config['BASE_DOMAIN'] = campos['BASE_DOMAIN'].strip().lower().lstrip('.')
+        current_app.config['MAIL_SERVER']  = campos['MAIL_SERVER']
+        current_app.config['MAIL_PORT']    = int(campos['MAIL_PORT'] or 587)
+        current_app.config['MAIL_USE_TLS'] = campos['MAIL_USE_TLS'].lower() == 'true'
+        current_app.config['MAIL_USE_SSL'] = campos['MAIL_USE_SSL'].lower() == 'true'
+        current_app.config['MAIL_USERNAME'] = campos['MAIL_USERNAME']
+        current_app.config['MAIL_DEFAULT_SENDER'] = campos['MAIL_DEFAULT_SENDER'] or campos['MAIL_USERNAME']
+        if nova_senha:
+            current_app.config['MAIL_PASSWORD'] = nova_senha
+
+        flash('Configurações salvas com sucesso! Reinicie o servidor para que todas as alterações sejam aplicadas.', 'success')
+        return redirect(url_for('superadmin.configuracoes_plataforma'))
+
+    # Recarrega valores após POST
+    valores, _ = _ler_env()
+    return render_template('superadmin/configuracoes.html',
+                           env=valores,
+                           env_existe=env_existe,
+                           env_path=os.path.abspath(env_path))
+
+
+@superadmin_bp.route('/configuracoes/testar-smtp', methods=['POST'])
+@superadmin_required
+def testar_smtp():
+    valores, _ = _ler_env()
+    _testar_smtp(valores)
+    return redirect(url_for('superadmin.configuracoes_plataforma'))
+
+
+def _testar_smtp(env_valores):
+    """Tenta enviar um e-mail de teste com as configurações atuais."""
+    from flask_mail import Message
+    from .. import mail
+
+    username = env_valores.get('MAIL_USERNAME', '').strip()
+    if not username:
+        flash('Configure o MAIL_USERNAME antes de testar.', 'warning')
+        return
+
+    destinatario = current_user.email if hasattr(current_user, 'email') else username
+    try:
+        msg = Message(
+            subject='ImobiFácil — Teste de SMTP',
+            sender=(current_app.config.get('MAIL_DEFAULT_SENDER') or username),
+            recipients=[destinatario],
+            html=(
+                '<h2>Teste de e-mail — ImobiFácil</h2>'
+                '<p>Se você recebeu esta mensagem, as configurações SMTP estão corretas.</p>'
+                '<p style="color:#888;font-size:.85rem;">Enviado pelo Painel Master</p>'
+            ),
+        )
+        mail.send(msg)
+        flash(f'E-mail de teste enviado para <strong>{destinatario}</strong> com sucesso!', 'success')
+    except Exception as e:
+        flash(f'Falha ao enviar e-mail de teste: {e}', 'danger')
 
 
 # ── RESET DE SENHA DE USUÁRIO ─────────────────────────────────────────────────

@@ -1,0 +1,334 @@
+{% extends 'admin/base.html' %}
+{% from '_macros.html' import paginacao %}
+
+{% block head %}
+<style>
+    .compat-row {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.06);
+        margin-bottom: .75rem;
+        display: flex;
+        align-items: stretch;
+        overflow: hidden;
+        transition: box-shadow .15s;
+    }
+    .compat-row:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); }
+
+    /* Foto */
+    .compat-foto {
+        width: 160px;
+        flex-shrink: 0;
+        background: #f0f2f5;
+        position: relative;
+        overflow: hidden;
+    }
+    .compat-foto img {
+        width: 100%; height: 100%;
+        object-fit: cover;
+    }
+    .compat-foto .no-foto {
+        width: 100%; height: 100%;
+        display: flex; align-items: center; justify-content: center;
+        color: #ccc; font-size: 2rem;
+    }
+
+    /* Dados do imóvel */
+    .compat-imovel {
+        flex: 1;
+        padding: 1rem 1.25rem;
+        border-right: 1px solid #f1f5f9;
+        min-width: 0;
+    }
+    .compat-imovel .titulo {
+        font-weight: 700; font-size: .95rem; color: #1e293b;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .compat-imovel .local  { font-size: .78rem; color: #64748b; margin-top: 2px; }
+    .compat-imovel .preco  { font-size: 1rem; font-weight: 700; color: #16a34a; margin-top: .4rem; }
+    .compat-specs {
+        display: flex; gap: 1rem; margin-top: .5rem;
+        font-size: .78rem; color: #64748b;
+    }
+    .compat-specs span { display: flex; align-items: center; gap: .25rem; }
+
+    /* Lead vinculado */
+    .compat-lead {
+        width: 220px;
+        flex-shrink: 0;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        border-right: 1px solid #f1f5f9;
+    }
+    .compat-lead .lead-nome   { font-weight: 600; font-size: .88rem; color: #1e293b; }
+    .compat-lead .lead-tel    { font-size: .78rem; color: #64748b; margin-top: 2px; }
+    .compat-lead .lead-status { font-size: .68rem; margin-top: .35rem; }
+
+    .status-Novo        { background:#dbeafe; color:#1d4ed8; }
+    .status-Qualificado { background:#d1fae5; color:#065f46; }
+    .status-Arquivado   { background:#f3f4f6; color:#374151; }
+    .status-Perdido     { background:#fee2e2; color:#b91c1c; }
+
+    /* Ações */
+    .compat-acoes {
+        width: 160px;
+        flex-shrink: 0;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: .4rem;
+        justify-content: center;
+    }
+
+    /* Abas */
+    .aba-btn {
+        display: inline-flex; align-items: center; gap: .4rem;
+        padding: .5rem 1.25rem; border-radius: 8px; font-size: .85rem; font-weight: 600;
+        text-decoration: none; border: 2px solid #e2e8f0; color: #64748b;
+        background: #fff; transition: all .15s;
+    }
+    .aba-btn:hover  { border-color: #94a3b8; color: #334155; }
+    .aba-btn.ativa-compativel  { border-color: #0d6efd; background: #e8f0fe; color: #0d6efd; }
+    .aba-btn.ativa-favorito    { border-color: #dc2626; background: #fee2e2; color: #dc2626; }
+    .aba-btn.ativa-descartado  { border-color: #64748b; background: #f1f5f9; color: #475569; }
+    .aba-cnt {
+        background: rgba(0,0,0,.1); border-radius: 20px;
+        padding: 0 .5rem; font-size: .72rem;
+    }
+
+    .hero-box {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border-radius: 16px;
+        padding: 2rem 2.5rem;
+        color: #fff;
+        margin-bottom: 1.75rem;
+        display: flex; align-items: center; gap: 2rem;
+    }
+    .hero-box .hero-icon { font-size: 3.5rem; opacity: .5; flex-shrink: 0; }
+    .hero-box h2  { font-size: 1.3rem; font-weight: 800; margin: 0 0 .25rem; }
+    .hero-box p   { font-size: .85rem; color: rgba(255,255,255,.6); margin: 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="hero-box">
+    <div class="hero-icon"><i class="bi bi-stars"></i></div>
+    <div>
+        <h2>Imóveis Compatíveis</h2>
+        <p>
+            Cruzamento automático entre o perfil de busca dos seus leads e o catálogo de imóveis.
+            Favorite os mais relevantes, descarte os inadequados ou envie por e-mail / WhatsApp.
+        </p>
+    </div>
+    <div class="d-flex flex-column gap-2 flex-shrink-0">
+        <form method="POST" action="{{ url_for('leads.enviar_emails_compativeis') }}">
+            <button type="submit" class="btn btn-success btn-sm w-100 px-3">
+                <i class="bi bi-envelope-fill me-1"></i> Enviar E-mails
+            </button>
+        </form>
+        <a href="{{ url_for('leads.recalcular_compativeis') }}"
+           class="btn btn-outline-light btn-sm px-3">
+            <i class="bi bi-arrow-clockwise me-1"></i> Recalcular
+        </a>
+    </div>
+</div>
+
+{# ── Abas ── #}
+<div class="d-flex gap-2 mb-4 flex-wrap">
+    <a href="{{ url_for('leads.pagina_compativeis', aba='compativel') }}"
+       class="aba-btn {{ 'ativa-compativel' if aba == 'compativel' }}">
+        <i class="bi bi-stars"></i> Compatíveis
+        <span class="aba-cnt">{{ contagem.compativel }}</span>
+    </a>
+    <a href="{{ url_for('leads.pagina_compativeis', aba='favorito') }}"
+       class="aba-btn {{ 'ativa-favorito' if aba == 'favorito' }}">
+        <i class="bi bi-heart-fill text-danger"></i> Favoritos
+        <span class="aba-cnt">{{ contagem.favorito }}</span>
+    </a>
+    <a href="{{ url_for('leads.pagina_compativeis', aba='descartado') }}"
+       class="aba-btn {{ 'ativa-descartado' if aba == 'descartado' }}">
+        <i class="bi bi-hand-thumbs-down"></i> Descartados
+        <span class="aba-cnt">{{ contagem.descartado }}</span>
+    </a>
+</div>
+
+{# ── Listagem ── #}
+{% if itens %}
+{% for item in itens %}
+{% set im  = item.imovel %}
+{% set lead= item.lead %}
+{% set foto= im.fotos | selectattr('principal') | first or (im.fotos | first if im.fotos else none) %}
+
+<div class="compat-row">
+
+    {# Foto #}
+    <div class="compat-foto">
+        {% if foto %}
+        <a href="{{ url_for('admin.editar_imovel', id=im.id) }}" target="_blank">
+            <img src="{{ url_for('static', filename=foto.url) }}" alt="{{ im.titulo }}">
+        </a>
+        {% else %}
+        <div class="no-foto"><i class="bi bi-house"></i></div>
+        {% endif %}
+    </div>
+
+    {# Dados do imóvel #}
+    <div class="compat-imovel">
+        <a href="{{ url_for('admin.editar_imovel', id=im.id) }}" target="_blank"
+           class="text-decoration-none">
+            <div class="titulo">{{ im.titulo }}</div>
+        </a>
+        <div class="local">
+            {% if im.bairro %}{{ im.bairro }} · {% endif %}
+            {{ im.cidade or '—' }}{% if im.estado %} / {{ im.estado }}{% endif %}
+        </div>
+        <div class="preco">{{ im.preco | moeda }}</div>
+        <div class="compat-specs">
+            {% if im.quartos %}
+            <span><i class="bi bi-door-open"></i> {{ im.quartos }} dorm.</span>
+            {% endif %}
+            {% if im.suites %}
+            <span><i class="bi bi-star"></i> {{ im.suites }} suíte{% if im.suites > 1 %}s{% endif %}</span>
+            {% endif %}
+            {% if im.vagas %}
+            <span><i class="bi bi-car-front"></i> {{ im.vagas }} vaga{% if im.vagas > 1 %}s{% endif %}</span>
+            {% endif %}
+            {% if im.area_util %}
+            <span><i class="bi bi-arrows-angle-expand"></i> {{ im.area_util | int }} m²</span>
+            {% endif %}
+        </div>
+        <div class="mt-2">
+            <span class="badge bg-primary-subtle text-primary" style="font-size:.68rem;">
+                {{ im.finalidade or '—' }}
+            </span>
+            {% if im.codigo_ref %}
+            <span class="text-muted" style="font-size:.72rem; font-family:monospace;">
+                Ref. {{ im.codigo_ref }}
+            </span>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Lead #}
+    <div class="compat-lead">
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center
+                        text-white fw-bold flex-shrink-0"
+                 style="width:28px;height:28px;font-size:.7rem;">
+                {{ lead.nome[0].upper() }}
+            </div>
+            <div class="min-w-0">
+                <div class="lead-nome text-truncate">{{ lead.nome }}</div>
+                <div class="lead-tel">{{ lead.telefone }}</div>
+            </div>
+        </div>
+        <span class="badge lead-status status-{{ lead.status }}" style="font-size:.65rem;border-radius:6px;">
+            {{ lead.status }}
+        </span>
+        {% if lead.interesse_finalidade %}
+        <div class="text-muted mt-1" style="font-size:.72rem;">
+            <i class="bi bi-search me-1"></i>{{ lead.interesse_finalidade }}
+            {% if lead.interesse_cidade %} · {{ lead.interesse_cidade }}{% endif %}
+        </div>
+        {% endif %}
+        <div class="d-flex gap-1 mt-2">
+            <a href="{{ url_for('leads.editar_lead', id=lead.id) }}"
+               class="btn btn-outline-secondary btn-sm flex-fill" style="font-size:.72rem;">
+                <i class="bi bi-pencil me-1"></i> Ver lead
+            </a>
+            {% if lead.email %}
+            <form method="POST"
+                  action="{{ url_for('leads.enviar_email_lead_compativel', lead_id=lead.id, aba=aba) }}">
+                <button type="submit"
+                        class="btn btn-sm {{ 'btn-success' if not item.email_enviado else 'btn-outline-success' }}"
+                        title="{{ 'Enviar e-mail com compatíveis' if not item.email_enviado else 'E-mail já enviado — reenviar' }}"
+                        style="font-size:.72rem;">
+                    <i class="bi bi-envelope{{ '-check' if item.email_enviado else '' }}-fill"></i>
+                </button>
+            </form>
+            {% else %}
+            <span class="btn btn-sm btn-outline-secondary disabled" style="font-size:.72rem;"
+                  title="Lead sem e-mail cadastrado">
+                <i class="bi bi-envelope-x"></i>
+            </span>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Ações #}
+    <div class="compat-acoes">
+        {# Favoritar #}
+        {% if aba != 'favorito' %}
+        <form method="POST"
+              action="{{ url_for('leads.atualizar_compativel', id=item.id, aba=aba) }}">
+            <input type="hidden" name="status" value="favorito">
+            <button type="submit" class="btn btn-outline-danger btn-sm w-100">
+                <i class="bi bi-heart me-1"></i> Favorito
+            </button>
+        </form>
+        {% else %}
+        <form method="POST"
+              action="{{ url_for('leads.atualizar_compativel', id=item.id, aba=aba) }}">
+            <input type="hidden" name="status" value="compativel">
+            <button type="submit" class="btn btn-danger btn-sm w-100">
+                <i class="bi bi-heart-fill me-1"></i> Favoritado
+            </button>
+        </form>
+        {% endif %}
+
+        {# Descartar #}
+        {% if aba != 'descartado' %}
+        <form method="POST"
+              action="{{ url_for('leads.atualizar_compativel', id=item.id, aba=aba) }}">
+            <input type="hidden" name="status" value="descartado">
+            <button type="submit" class="btn btn-outline-secondary btn-sm w-100">
+                <i class="bi bi-hand-thumbs-down me-1"></i> Descartar
+            </button>
+        </form>
+        {% else %}
+        <form method="POST"
+              action="{{ url_for('leads.atualizar_compativel', id=item.id, aba=aba) }}">
+            <input type="hidden" name="status" value="compativel">
+            <button type="submit" class="btn btn-secondary btn-sm w-100">
+                <i class="bi bi-arrow-counterclockwise me-1"></i> Restaurar
+            </button>
+        </form>
+        {% endif %}
+
+        {# Enviar WhatsApp #}
+        {% set tel = lead.telefone | replace('(','') | replace(')','') | replace(' ','') | replace('-','') %}
+        {% set msg = 'Olá ' ~ lead.nome ~ '! Encontrei um imóvel que pode te interessar: ' ~ im.titulo ~ ' em ' ~ (im.cidade or '') ~ '. Posso te contar mais detalhes?' %}
+        <a href="https://wa.me/55{{ tel }}?text={{ msg | urlencode }}"
+           target="_blank"
+           class="btn btn-outline-success btn-sm w-100">
+            <i class="bi bi-whatsapp me-1"></i> WhatsApp
+        </a>
+    </div>
+
+</div>
+{% endfor %}
+
+{{ paginacao(pagination) }}
+
+{% else %}
+<div class="text-center py-5 text-muted">
+    <i class="bi bi-stars fs-1 opacity-25 d-block mb-3"></i>
+    {% if aba == 'compativel' %}
+    <p class="fw-semibold">Nenhum imóvel compatível encontrado.</p>
+    <p class="small">
+        Cadastre <a href="{{ url_for('leads.listar_leads') }}">leads</a> com
+        <strong>Perfil de Busca</strong> preenchido para o cruzamento automático funcionar.
+    </p>
+    {% elif aba == 'favorito' %}
+    <p class="fw-semibold">Nenhum favorito ainda.</p>
+    <p class="small">Marque imóveis como favoritos na aba Compatíveis.</p>
+    {% else %}
+    <p class="fw-semibold">Nenhum item descartado.</p>
+    {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

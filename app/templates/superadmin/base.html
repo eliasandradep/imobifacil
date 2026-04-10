@@ -113,6 +113,11 @@
 
         <div class="nav-group-label">Plataforma</div>
 
+        <a href="{{ url_for('superadmin.configuracoes_plataforma') }}"
+           class="nav-link-side {% if request.endpoint in ['superadmin.configuracoes_plataforma','superadmin.testar_smtp'] %}active{% endif %}">
+            <i class="bi bi-sliders"></i> Configurações
+        </a>
+
         <a href="{{ url_for('superadmin.dashboard') }}#dominios"
            class="nav-link-side {% if request.endpoint == 'superadmin.dominios_imobiliaria' %}active{% endif %}">
             <i class="bi bi-globe"></i> Domínios
