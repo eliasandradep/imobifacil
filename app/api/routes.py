@@ -7,7 +7,7 @@ api_bp = Blueprint('api', __name__)
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        token = request.headers.get('X-Imobifacil-Token')
+        token = request.headers.get('X-Imobikey-Token')
         if not token:
             return jsonify({"erro": "Token ausente"}), 401
         
@@ -23,7 +23,7 @@ def token_required(f):
 
 @api_bp.route('/status', methods=['GET'])
 def status():
-    return jsonify({"status": "ImobiFácil API Online"}), 200
+    return jsonify({"status": "ImobiKey API Online"}), 200
 
 # Rota que a SendPulse chamará para cadastrar leads
 @api_bp.route('/leads', methods=['POST'])

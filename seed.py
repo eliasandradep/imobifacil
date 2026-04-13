@@ -1,6 +1,6 @@
 """
-seed.py — Script de inicialização do banco de dados ImobiFácil.
-Execute UMA vez após apagar o instance/imobifacil.db:
+seed.py — Script de inicialização do banco de dados ImobiKey.
+Execute UMA vez após apagar o instance/imobikey.db:
 
     python seed.py
 """

@@ -7,8 +7,8 @@ Execute: python migrate_superadmin.py
 import sqlite3, os
 from datetime import datetime
 
-DB_PATH   = os.path.join('instance', 'imobifacil.db')
-SA_EMAIL  = os.environ.get('SA_EMAIL',  'admin@imobifacil.com')
+DB_PATH   = os.path.join('instance', 'imobikey.db')
+SA_EMAIL  = os.environ.get('SA_EMAIL',  'admin@imobikey.com.br')
 SA_SENHA  = os.environ.get('SA_SENHA',  'admin123')
 SA_NOME   = os.environ.get('SA_NOME',   'Super Admin')
 

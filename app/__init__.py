@@ -16,7 +16,7 @@ def _resolver_imobiliaria(host, app):
     Ordem de tentativas:
       1. Domínio personalizado exato       →  www.imobiliaria.com.br
       2. Domínio personalizado sem www     →  imobiliaria.com.br
-      3. Subdomínio da plataforma          →  slug.imobifacil.com
+      3. Subdomínio da plataforma          →  slug.imobikey.com.br
       4. Legado: campo 'dominio' exato     →  127.0.0.1 / qualquer valor salvo
     """
     from .models import Imobiliaria

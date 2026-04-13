@@ -454,11 +454,11 @@ def _testar_smtp(env_valores):
     destinatario = current_user.email if hasattr(current_user, 'email') else username
     try:
         msg = Message(
-            subject='ImobiFácil — Teste de SMTP',
+            subject='ImobiKey — Teste de SMTP',
             sender=(current_app.config.get('MAIL_DEFAULT_SENDER') or username),
             recipients=[destinatario],
             html=(
-                '<h2>Teste de e-mail — ImobiFácil</h2>'
+                '<h2>Teste de e-mail — ImobiKey</h2>'
                 '<p>Se você recebeu esta mensagem, as configurações SMTP estão corretas.</p>'
                 '<p style="color:#888;font-size:.85rem;">Enviado pelo Painel Master</p>'
             ),
