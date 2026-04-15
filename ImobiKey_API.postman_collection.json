@@ -1,0 +1,319 @@
+{
+  "info": {
+    "name": "ImobiKey API",
+    "description": "Coleção completa para integração com a API da plataforma ImobiKey.\n\n## Autenticação\nTodas as requisições (exceto /status e /docs) exigem o header:\n`X-Imobikey-Token: <seu_token>`\n\nO token pode ser encontrado no painel Superadmin → Imobiliárias → Editar → Token API.\n\n## Variáveis\nConfigure no seu Environment do Postman:\n- `base_url` → `http://localhost:5000`\n- `token`    → Token da imobiliária",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:5000", "type": "string" },
+    { "key": "token",    "value": "SEU_TOKEN_AQUI",        "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "🔧 Sistema",
+      "item": [
+        {
+          "name": "Status da API",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/status", "host": ["{{base_url}}"], "path": ["api","status"] }
+          }
+        },
+        {
+          "name": "Mapa de Endpoints (Docs)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Imobikey-Token", "value": "{{token}}" }],
+            "url": { "raw": "{{base_url}}/api/docs", "host": ["{{base_url}}"], "path": ["api","docs"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👤 Clientes",
+      "item": [
+        {
+          "name": "Listar Clientes",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Imobikey-Token", "value": "{{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/clientes?pagina=1&por_pagina=20",
+              "host": ["{{base_url}}"], "path": ["api","clientes"],
+              "query": [
+                { "key": "pagina",    "value": "1" },
+                { "key": "por_pagina","value": "20" },
+                { "key": "tipo",  "value": "", "description": "Cliente | Corretor | Proprietário | Locatário | Interessado | Outro", "disabled": true },
+                { "key": "busca", "value": "", "description": "Busca por nome, e-mail ou documento", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Criar Cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Imobikey-Token", "value": "{{token}}" },
+              { "key": "Content-Type",     "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"João da Silva\",\n  \"tipo\": \"Cliente\",\n  \"email\": \"joao@email.com\",\n  \"documento\": \"123.456.789-00\",\n  \"data_nascimento\": \"1985-06-15\",\n  \"telefones\": [\n    { \"numero\": \"(11) 99999-1234\", \"tipo\": \"WhatsApp\" },\n    { \"numero\": \"(11) 3333-4444\", \"tipo\": \"Fixo\" }\n  ],\n  \"cep\": \"01310-100\",\n  \"logradouro\": \"Av. Paulista\",\n  \"numero\": \"1000\",\n  \"complemento\": \"Apto 42\",\n  \"bairro\": \"Bela Vista\",\n  \"cidade\": \"São Paulo\",\n  \"estado\": \"SP\",\n  \"observacoes\": \"Cliente indicado por Maria.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/api/clientes", "host": ["{{base_url}}"], "path": ["api","clientes"] }
+          }
+        },
+        {
+          "name": "Obter Cliente por ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Imobikey-Token", "value": "{{token}}" }],
+            "url": { "raw": "{{base_url}}/api/clientes/1", "host": ["{{base_url}}"], "path": ["api","clientes","1"] }
+          }
+        },
+        {
+          "name": "Atualizar Cliente",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "X-Imobikey-Token", "value": "{{token}}" },
+              { "key": "Content-Type",     "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"João da Silva Atualizado\",\n  \"email\": \"joao.novo@email.com\",\n  \"tipo\": \"Proprietário\",\n  \"telefones\": [\n    { \"numero\": \"(11) 98888-5678\", \"tipo\": \"WhatsApp\" }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/api/clientes/1", "host": ["{{base_url}}"], "path": ["api","clientes","1"] }
+          }
+        },
+        {
+          "name": "Excluir Cliente",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "X-Imobikey-Token", "value": "{{token}}" }],
+            "url": { "raw": "{{base_url}}/api/clientes/1", "host": ["{{base_url}}"], "path": ["api","clientes","1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏠 Imóveis",
+      "item": [
+        {
+          "name": "Listar Tipos de Imóvel",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Imobikey-Token", "value": "{{token}}" }],
+            "url": { "raw": "{{base_url}}/api/imoveis/tipos", "host": ["{{base_url}}"], "path": ["api","imoveis","tipos"] }
+          }
+        },
+        {
+          "name": "Listar Imóveis",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Imobikey-Token", "value": "{{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/imoveis?pagina=1&por_pagina=20",
+              "host": ["{{base_url}}"], "path": ["api","imoveis"],
+              "query": [
+                { "key": "pagina",    "value": "1" },
+                { "key": "por_pagina","value": "20" },
+                { "key": "finalidade","value": "Venda", "description": "Venda | Locação | Venda e Locação", "disabled": true },
+                { "key": "cidade",   "value": "",       "disabled": true },
+                { "key": "destaque", "value": "true",   "description": "true | false", "disabled": true },
+                { "key": "busca",    "value": "",       "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Criar Imóvel",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Imobikey-Token", "value": "{{token}}" },
+              { "key": "Content-Type",     "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Apartamento 3 Quartos Próximo ao Metrô\",\n  \"tipo_id\": 1,\n  \"finalidade\": \"Venda\",\n  \"preco\": 450000.00,\n  \"valor_condominio\": 800.00,\n  \"valor_iptu\": 150.00,\n  \"area_util\": 85.5,\n  \"area_total\": 95.0,\n  \"quartos\": 3,\n  \"suites\": 1,\n  \"banheiros\": 2,\n  \"vagas\": 1,\n  \"descricao\": \"Excelente apartamento com acabamento de alto padrão.\",\n  \"destaque\": true,\n  \"cep\": \"01310-100\",\n  \"logradouro\": \"Av. Paulista\",\n  \"numero\": \"500\",\n  \"bairro\": \"Bela Vista\",\n  \"cidade\": \"São Paulo\",\n  \"estado\": \"SP\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/api/imoveis", "host": ["{{base_url}}"], "path": ["api","imoveis"] }
+          }
+        },
+        {
+          "name": "Obter Imóvel por ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Imobikey-Token", "value": "{{token}}" }],
+            "url": { "raw": "{{base_url}}/api/imoveis/1", "host": ["{{base_url}}"], "path": ["api","imoveis","1"] }
+          }
+        },
+        {
+          "name": "Atualizar Imóvel",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "X-Imobikey-Token", "value": "{{token}}" },
+              { "key": "Content-Type",     "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"preco\": 430000.00,\n  \"destaque\": false,\n  \"descricao\": \"Descrição atualizada do imóvel.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/api/imoveis/1", "host": ["{{base_url}}"], "path": ["api","imoveis","1"] }
+          }
+        },
+        {
+          "name": "Excluir Imóvel",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "X-Imobikey-Token", "value": "{{token}}" }],
+            "url": { "raw": "{{base_url}}/api/imoveis/1", "host": ["{{base_url}}"], "path": ["api","imoveis","1"] }
+          }
+        },
+        {
+          "name": "📷 Enviar Fotos do Imóvel",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Imobikey-Token", "value": "{{token}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "fotos",
+                  "type": "file",
+                  "src": [],
+                  "description": "Selecione 1 ou mais arquivos (jpg, jpeg, png, webp). Repita este campo para múltiplas fotos."
+                }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/api/imoveis/1/fotos", "host": ["{{base_url}}"], "path": ["api","imoveis","1","fotos"] },
+            "description": "Envie múltiplos arquivos usando o mesmo campo 'fotos'.\nNÃO inclua Content-Type manualmente — o Postman define automaticamente com o boundary correto para multipart/form-data."
+          }
+        },
+        {
+          "name": "⭐ Definir Foto Principal",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "X-Imobikey-Token", "value": "{{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/imoveis/1/fotos/1/principal",
+              "host": ["{{base_url}}"],
+              "path": ["api","imoveis","1","fotos","1","principal"]
+            },
+            "description": "Substitua o segundo '1' pelo ID da foto que deseja tornar principal."
+          }
+        },
+        {
+          "name": "🗑️ Excluir Foto",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "X-Imobikey-Token", "value": "{{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/imoveis/1/fotos/1",
+              "host": ["{{base_url}}"],
+              "path": ["api","imoveis","1","fotos","1"]
+            },
+            "description": "Substitua o segundo '1' pelo ID da foto a remover. O arquivo é deletado do disco."
+          }
+        }
+      ]
+    },
+    {
+      "name": "📋 Leads",
+      "item": [
+        {
+          "name": "Listar Leads",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Imobikey-Token", "value": "{{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/leads?pagina=1&por_pagina=20",
+              "host": ["{{base_url}}"], "path": ["api","leads"],
+              "query": [
+                { "key": "pagina",    "value": "1" },
+                { "key": "por_pagina","value": "20" },
+                { "key": "status", "value": "Novo",     "description": "Novo | Qualificado | Arquivado | Perdido", "disabled": true },
+                { "key": "origem", "value": "WhatsApp", "description": "Manual | Site | WhatsApp | Facebook | Instagram", "disabled": true },
+                { "key": "busca",  "value": "",          "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Criar Lead (Completo)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Imobikey-Token", "value": "{{token}}" },
+              { "key": "Content-Type",     "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Maria Oliveira\",\n  \"telefone\": \"(11) 97777-8888\",\n  \"email\": \"maria@email.com\",\n  \"origem\": \"WhatsApp\",\n  \"status\": \"Novo\",\n  \"mensagem\": \"Tenho interesse em apartamentos de 2 quartos.\",\n  \"interesse_finalidade\": \"Compra\",\n  \"interesse_preco_min\": 200000,\n  \"interesse_preco_max\": 400000,\n  \"interesse_quartos_min\": 2,\n  \"interesse_cidade\": \"São Paulo\",\n  \"interesse_bairros\": \"Moema, Ibirapuera\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/api/leads", "host": ["{{base_url}}"], "path": ["api","leads"] }
+          }
+        },
+        {
+          "name": "Criar Lead (Simples)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Imobikey-Token", "value": "{{token}}" },
+              { "key": "Content-Type",     "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Pedro Santos\",\n  \"whatsapp\": \"(11) 96666-7777\",\n  \"origem\": \"WhatsApp\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/api/leads", "host": ["{{base_url}}"], "path": ["api","leads"] }
+          }
+        },
+        {
+          "name": "Obter Lead por ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Imobikey-Token", "value": "{{token}}" }],
+            "url": { "raw": "{{base_url}}/api/leads/1", "host": ["{{base_url}}"], "path": ["api","leads","1"] }
+          }
+        },
+        {
+          "name": "Atualizar Lead",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "X-Imobikey-Token", "value": "{{token}}" },
+              { "key": "Content-Type",     "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Qualificado\",\n  \"interesse_preco_max\": 500000,\n  \"interesse_bairros\": \"Moema, Vila Mariana, Ibirapuera\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/api/leads/1", "host": ["{{base_url}}"], "path": ["api","leads","1"] }
+          }
+        },
+        {
+          "name": "Excluir Lead",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "X-Imobikey-Token", "value": "{{token}}" }],
+            "url": { "raw": "{{base_url}}/api/leads/1", "host": ["{{base_url}}"], "path": ["api","leads","1"] }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -38,6 +38,9 @@
                     <td class="text-primary fw-bold">{{ imovel.preco | moeda }}</td>
                     <td class="text-center">
                         <div class="btn-group shadow-sm">
+                            <a href="{{ url_for('admin.detalhe_imovel', id=imovel.id) }}" class="btn btn-sm btn-outline-secondary" title="Ver Detalhes">
+                                <i class="bi bi-eye"></i>
+                            </a>
                             <a href="{{ url_for('admin.editar_imovel', id=imovel.id) }}" class="btn btn-sm btn-outline-primary" title="Editar">
                                 <i class="bi bi-pencil-square"></i>
                             </a>

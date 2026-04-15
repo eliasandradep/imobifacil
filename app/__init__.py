@@ -44,6 +44,14 @@ def _resolver_imobiliaria(host, app):
 
     # 4 — Campo legado 'dominio'
     imob = Imobiliaria.query.filter_by(dominio=host, ativo=True).first()
+    if imob:
+        return imob
+
+    # 5 — Equivalência local: localhost ↔ 127.0.0.1
+    if host == 'localhost':
+        imob = Imobiliaria.query.filter_by(dominio='127.0.0.1', ativo=True).first()
+    elif host == '127.0.0.1':
+        imob = Imobiliaria.query.filter_by(dominio='localhost', ativo=True).first()
     return imob
 
 
@@ -89,7 +97,8 @@ def create_app():
     @app.context_processor
     def injetar_contexto():
         if not getattr(g, 'imobiliaria', None):
-            return {'menu_links': [], 'menu_paginas': [], 'leads_novos_count': 0}
+            return {'menu_links': [], 'menu_paginas': [], 'leads_novos_count': 0, 'config': app.config}
+
         from .models import MenuLink, PaginaSite, Lead
         menu_links = MenuLink.query.filter_by(
             imobiliaria_id=g.imobiliaria.id, ativo=True
@@ -104,6 +113,7 @@ def create_app():
             'menu_links': menu_links,
             'menu_paginas': menu_paginas,
             'leads_novos_count': leads_novos_count,
+            'config': app.config,
         }
 
     return app

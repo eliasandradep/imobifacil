@@ -138,6 +138,18 @@ def listar_imoveis():
 
 # --- GESTÃO DE IMÓVEIS (VERSÃO CONGELADA) ---
 
+@admin_bp.route('/imoveis/<int:id>/detalhe')
+@login_required
+def detalhe_imovel(id):
+    imovel = Imovel.query.filter_by(id=id, imobiliaria_id=current_user.imobiliaria_id).first_or_404()
+    foto_principal = next((f for f in imovel.fotos if f.principal), None)
+    if not foto_principal and imovel.fotos:
+        foto_principal = imovel.fotos[0]
+    return render_template('admin/detalhe_imovel.html',
+                           imovel=imovel,
+                           foto_principal=foto_principal)
+
+
 @admin_bp.route('/imoveis/novo', methods=['GET', 'POST'])
 @login_required
 def novo_imovel():

@@ -300,7 +300,16 @@
 
         {# Enviar WhatsApp #}
         {% set tel = lead.telefone | replace('(','') | replace(')','') | replace(' ','') | replace('-','') %}
-        {% set msg = 'Olá ' ~ lead.nome ~ '! Encontrei um imóvel que pode te interessar: ' ~ im.titulo ~ ' em ' ~ (im.cidade or '') ~ '. Posso te contar mais detalhes?' %}
+        {% set imob = item.imovel.imobiliaria %}
+        {% if imob.dominio_personalizado %}
+            {% set base_site = 'https://' ~ imob.dominio_personalizado %}
+        {% elif imob.slug and config.BASE_DOMAIN %}
+            {% set base_site = 'https://' ~ imob.slug ~ '.' ~ config.BASE_DOMAIN %}
+        {% else %}
+            {% set base_site = 'http://' ~ imob.dominio %}
+        {% endif %}
+        {% set link_imovel = base_site ~ '/imovel/' ~ im.id %}
+        {% set msg = 'Olá ' ~ lead.nome ~ '! Encontrei um imóvel que pode te interessar: *' ~ im.titulo ~ '*' ~ (' em ' ~ im.cidade if im.cidade else '') ~ '.\n\n🏠 Ref.: ' ~ (im.codigo_ref or '—') ~ '\n💰 ' ~ (im.preco | moeda) ~ '\n\n🔗 Veja fotos e detalhes:\n' ~ link_imovel ~ '\n\nPosso te ajudar com mais informações?' %}
         <a href="https://wa.me/55{{ tel }}?text={{ msg | urlencode }}"
            target="_blank"
            class="btn btn-outline-success btn-sm w-100">
